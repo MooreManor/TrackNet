@@ -1,5 +1,7 @@
-from keras.models import *
-from keras.layers import *
+# from keras.models import *
+# from keras.layers import *
+from tensorflow.keras.models import *
+from tensorflow.keras.layers import *
 def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, input_width = 640
 
 	imgs_input = Input(shape=(9,input_height,input_width))

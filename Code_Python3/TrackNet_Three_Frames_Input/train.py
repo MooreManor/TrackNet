@@ -1,8 +1,12 @@
 import argparse
 import Models , LoadBatches
 from keras import optimizers
-from keras.utils import plot_model
+# from tensorflow import keras
+# from keras.utils import plot_model
+from keras.utils.vis_utils import plot_model
+import tensorflow as tf
 
+# --save_weights_path=weights/model --training_images_name="training_model2.csv" --epochs=500 --n_classes=256 --input_height=360 --input_width=640 --load_weights=2 --step_per_epochs=200 --batch_size=2
 #parse parameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_weights_path", type = str  )
@@ -25,7 +29,14 @@ save_weights_path = args.save_weights_path
 epochs = args.epochs
 load_weights = args.load_weights
 step_per_epochs = args.step_per_epochs
-optimizer_name = optimizers.Adadelta(lr=1.0)
+# optimizer_name = optimizers.Adadelta(lr=1.0)
+# optimizer_name = optimizers.Adam(lr=1.0)
+from tensorflow.keras.optimizers import Adadelta, Adam
+# from keras.optimizers import Adadelta
+optimizer_name = Adadelta(lr=1.0)
+# optimizer_name = tf.python.keras.optimizers.Adadelta(lr=1.0)
+# optimizer_name = tf.python.keras.optimizers.Adadelta(lr=1.0)
+# tensorflow.python.keras.optimizers
 
 #load TrackNet model
 modelTN = Models.TrackNet.TrackNet
@@ -36,15 +47,15 @@ m.compile(loss='categorical_crossentropy', optimizer= optimizer_name, metrics=['
 if load_weights != "-1":
 	m.load_weights("weights/model." + load_weights)
 
-#show TrackNet details, save it as TrackNet.png
-plot_model( m , show_shapes=True , to_file='TrackNet.png')
+# #show TrackNet details, save it as TrackNet.png
+# plot_model( m , show_shapes=True , to_file='TrackNet.png')
 
 #get TrackNet output height and width
 model_output_height = m.outputHeight
 model_output_width = m.outputWidth
 
 #creat input data and output data
-Generator  = LoadBatches.InputOutputGenerator( training_images_name,  train_batch_size,  n_classes , input_height , input_width , model_output_height , model_output_width)
+Generator = LoadBatches.InputOutputGenerator( training_images_name,  train_batch_size,  n_classes , input_height , input_width , model_output_height , model_output_width)
 
 
 #start to train the model, and save weights until finish 

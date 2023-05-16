@@ -30,12 +30,16 @@ plt.show()
 
 
 #create the heatmap as ground truth
-images_path = expanduser("~")+'/dataset/tennis/'
-dirs = glob.glob(images_path+'data/Clip*')
+# images_path = expanduser("~")+'/dataset/tennis/'
+images_path = '/datasetb/tennis'
+# dirs = glob.glob(images_path+'data/Clip*')
+dirs = glob.glob(images_path+'/**/Clip*')
 for index in dirs:
         #################change the path####################################################
+        game_ind = index.split('/')[-2]
+        clip_ind = index.split('/')[-1]
         pics = glob.glob(index + "/*.jpg")
-        output_pics_path = images_path+'groundtruth/' + os.path.split(index)[-1]
+        output_pics_path = images_path+ f'/{game_ind}_GroundTruth/' + clip_ind
         label_path = index + "/Label.csv"
         ####################################################################################
         
