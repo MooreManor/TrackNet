@@ -6,6 +6,7 @@ from keras import optimizers
 from keras.utils.vis_utils import plot_model
 import tensorflow as tf
 
+# --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=500 --n_classes=256 --input_height=360 --input_width=640 --load_weights=2 --step_per_epochs=200 --batch_size=2
 # --save_weights_path=weights/model --training_images_name="training_model2.csv" --epochs=500 --n_classes=256 --input_height=360 --input_width=640 --load_weights=2 --step_per_epochs=200 --batch_size=2
 #parse parameters
 parser = argparse.ArgumentParser()
