@@ -69,21 +69,52 @@ def InputOutputGenerator( images_path,  batch_size,  n_classes , input_height , 
 	#read csv file to 'zipped'
 	columns = defaultdict(list)
 	with open(images_path) as f:
-	    reader = csv.reader(f)
-	    next(reader)
-	    for row in reader:
-	        for (i,v) in enumerate(row):
-	            columns[i].append(v)
+		reader = csv.reader(f)
+		next(reader)
+		for row in reader:
+			for (i,v) in enumerate(row):
+				columns[i].append(v)
 	zipped = itertools.cycle( zip(columns[0], columns[1], columns[2], columns[3]) )
 
 	while True:
 		Input = []
 		Output = []
 		#read input&output for each batch
-		for _ in range( batch_size) :
+		for _ in range( batch_size):
 			path, path1, path2 , anno = next(zipped)
 			Input.append( getInputArr(path, path1, path2 , input_width , input_height) )
 			Output.append( getOutputArr( anno , n_classes , output_width , output_height) )
 		#return input&output
 		yield np.array(Input) , np.array(Output)
 
+
+import os
+from PIL import Image
+import torch
+from torch.utils.data import Dataset
+
+class TennisDataset(Dataset):
+	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width):
+		self.images_path = images_path
+		self.n_classes = n_classes
+		self.input_height = input_height
+		self.input_width = input_width
+		self.output_height = output_height
+		self.output_width = output_width
+		# read csv file to 'zipped'
+		columns = defaultdict(list)
+		with open(images_path) as f:
+			reader = csv.reader(f)
+			next(reader)
+			for row in reader:
+				for (i, v) in enumerate(row):
+					columns[i].append(v)
+		zipped = itertools.cycle(zip(columns[0], columns[1], columns[2], columns[3]))
+		self.data = [next(zipped) for i in range(len(columns[0]))]
+	def __len__(self):
+		return len(self.data)
+	def __getitem__(self, index):
+		path, path1, path2, anno = self.data[index]
+		input = getInputArr(path, path1, path2, self.input_width, self.input_height)
+		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height)
+		return np.array(input), np.array(output)

@@ -43,6 +43,7 @@ optimizer_name = Adadelta(lr=1.0)
 modelTN = Models.TrackNet.TrackNet
 m = modelTN( n_classes , input_height=input_height, input_width=input_width   )
 m.compile(loss='categorical_crossentropy', optimizer= optimizer_name, metrics=['accuracy'])
+# m.compile(loss='categorical_crossentropy', optimizer= optimizer_name, metrics=['categorical_accuracy'])
 
 #check if need to retrain the model weights
 if load_weights != "-1":
@@ -73,3 +74,31 @@ for ep in range(1, epochs+1 ):
 	m.fit_generator(Generator, step_per_epochs)
 	if ep % 50 == 0:
 		m.save_weights(save_weights_path + ".0")
+
+
+# # Pytorch Implementation
+# import torch
+# import torch.nn as nn
+# import torch.optim as optim
+# from torch.utils.data import DataLoader
+# from torchvision.transforms import ToTensor
+# from tqdm import tqdm
+#
+# def pt_categorical_crossentropy(pred, label):
+#     """
+#     使用pytorch 来实现 categorical_crossentropy
+#     """
+#     # print(-label * torch.log(pred))
+#     return torch.sum(-label * torch.log(pred))
+#
+#
+# model = Models.TrackNet.TrackNet(n_classes, input_height, input_width)
+# optimizer = optim.Adadelta(model.parameters(), lr=1.0)
+# # criterion = nn.CrossEntropyLoss()
+# # 获取TrackNet输出的高度和宽度
+# model_output_height = 360
+# model_output_width = 640
+
+
+
+
