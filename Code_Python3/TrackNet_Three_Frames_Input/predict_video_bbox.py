@@ -4,6 +4,9 @@ import queue
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
+from utils import video_to_images, save_PIL_image, gen_tennis_loc_csv
+import os.path as osp
+
 
 # --save_weights_path=weights/model.3 --input_video_path="test.mp4" --output_video_path="test_TrackNet.mp4" --n_classes=256
 # --save_weights_path=weights/model.3 --input_video_path="play.mp4" --output_video_path="play_TrackNet.mp4" --n_classes=256
@@ -30,6 +33,9 @@ if output_video_path == "":
 	output_video_path = input_video_path.split('.')[0] + "_TrackNet.mp4"
 
 #get video fps&video size
+print('Turning the videos to images...')
+dst_folder = f'./tmp/{osp.basename(input_video_path)[:-4]}'
+video_to_images(input_video_path, img_folder=dst_folder+'/imgs')
 video = cv2.VideoCapture(input_video_path)
 fps = int(video.get(cv2.CAP_PROP_FPS))
 output_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -56,7 +62,8 @@ for i in range(0,8):
 #save prediction images as vidoe
 #Tutorial: https://stackoverflow.com/questions/33631489/error-during-saving-a-video-using-python-and-opencv
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_video = cv2.VideoWriter(output_video_path,fourcc, fps, (output_width,output_height))
+output_video_path = osp.join(dst_folder, output_video_path)
+output_video = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width,output_height))
 
 
 #both first and second frames cant be predict, so we directly write the frames to output video
@@ -84,6 +91,7 @@ img = cv2.resize(img, ( width , height))
 #input must be float type
 img = img.astype(np.float32)
 
+gen_tennis_loc_csv(dst_folder)
 
 x=y=0
 while(True):
@@ -249,6 +257,7 @@ while(True):
 			draw = ImageDraw.Draw(PIL_image)
 			# draw.ellipse(bbox, outline ='yellow')
 			draw.rectangle(bbox, outline='red', width=2)
+			save_PIL_image(PIL_img=PIL_image, img_folder=dst_folder+'/bbox', img_name="{:06d}.png".format(currentFrame))
 			del draw
 			# flag = 1
 
