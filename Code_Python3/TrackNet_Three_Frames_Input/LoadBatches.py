@@ -94,7 +94,7 @@ import torch
 from torch.utils.data import Dataset
 
 class TennisDataset(Dataset):
-	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width):
+	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width, num_images=0):
 		self.images_path = images_path
 		self.n_classes = n_classes
 		self.input_height = input_height
@@ -111,10 +111,18 @@ class TennisDataset(Dataset):
 					columns[i].append(v)
 		zipped = itertools.cycle(zip(columns[0], columns[1], columns[2], columns[3]))
 		self.data = [next(zipped) for i in range(len(columns[0]))]
+
+		if num_images > 0:
+			# select a random subset of the dataset
+			rand = np.random.randint(0, len(self.data), size=(num_images))
+			self.data = np.array(self.data)[rand]
+
 	def __len__(self):
 		return len(self.data)
 	def __getitem__(self, index):
 		path, path1, path2, anno = self.data[index]
 		input = getInputArr(path, path1, path2, self.input_width, self.input_height)
 		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height)
-		return np.array(input), np.array(output)
+		gt_ht = cv2.imread(anno, 1)
+		gt_ht = cv2.resize(gt_ht, (self.input_width, self.input_height))
+		return np.array(input), np.array(output), np.array(gt_ht)

@@ -2,6 +2,7 @@
 # from keras.layers import *
 from tensorflow.keras.models import *
 from tensorflow.keras.layers import *
+import math
 def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, input_width = 640
 
 	imgs_input = Input(shape=(9,input_height,input_width))
@@ -145,7 +146,18 @@ import torch.nn as nn
 
 import torch.nn as nn
 
-
+def init_weights(m):
+    if type(m) == nn.ConvTranspose2d:
+        nn.init.normal_(m.weight,std=0.001)
+    elif type(m) == nn.Conv2d:
+        nn.init.normal_(m.weight,std=0.001)
+        nn.init.constant_(m.bias, 0)
+    elif type(m) == nn.BatchNorm2d:
+        nn.init.constant_(m.weight,1)
+        nn.init.constant_(m.bias,0)
+    elif type(m) == nn.Linear:
+        nn.init.normal_(m.weight,std=0.01)
+        nn.init.constant_(m.bias,0)
 class TrackNet_pt(nn.Module):
 	def __init__(self, n_classes, input_height, input_width):
 		super(TrackNet_pt, self).__init__()
@@ -238,10 +250,11 @@ class TrackNet_pt(nn.Module):
 		self.bn24 = nn.BatchNorm2d(n_classes)
 
 		# self.softmax = nn.Softmax(dim=1)
-		self.softmax = nn.Softmax(dim=2)
+		# self.softmax = nn.Softmax(dim=2)
 
 		self.outputWidth = None
 		self.outputHeight = None
+		self.init_weights()
 
 	def forward(self, x):
 		batch_size = x.shape[0]
@@ -360,6 +373,30 @@ class TrackNet_pt(nn.Module):
 		x = x.permute(0, 2, 1)
 
 		# apply softmax to get the probability distribution
-		x = self.softmax(x)
+		# x = self.softmax(x)
 
 		return x
+
+	def init_weights(self, pretrained=''):
+		# logger.info('=> init weights from normal distribution')
+		for m in self.modules():
+			if isinstance(m, nn.Conv2d):
+				# nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+				torch.nn.init.uniform_(m.weight, a=-0.05, b=0.05)
+				# nn.init.normal_(m.weight, std=0.001)
+				# n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+				# m.weight.data.normal_(0, math.sqrt(2. / n))
+				# for name, _ in m.named_parameters():
+				# 	if name in ['bias']:
+				# 		nn.init.constant_(m.bias, 0)
+			elif isinstance(m, nn.BatchNorm2d):
+				nn.init.constant_(m.weight, 1)
+				nn.init.constant_(m.bias, 0)
+			elif isinstance(m, nn.ConvTranspose2d):
+				nn.init.normal_(m.weight, std=0.001)
+				for name, _ in m.named_parameters():
+					if name in ['bias']:
+						nn.init.constant_(m.bias, 0)
+			elif isinstance(m, nn.Linear):
+				nn.init.normal_(m.weight, std=0.01)
+				nn.init.constant_(m.bias, 0)

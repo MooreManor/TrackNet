@@ -4,3 +4,4 @@
 *.csv
 *.fig
 *.pyc
+weights/

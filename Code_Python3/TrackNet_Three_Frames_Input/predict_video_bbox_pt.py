@@ -4,13 +4,13 @@ import queue
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
+import torch
 
-# --save_weights_path=weights/model.3 --input_video_path="test.mp4" --output_video_path="test_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="play.mp4" --output_video_path="play_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="VideoInput/167979954199057.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="output3.mp4" --output_video_path="output3_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="tmp.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.0.1 --input_video_path="output3.mp4" --output_video_path="output3_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/model.0 --input_video_path="test.mp4" --output_video_path="test_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/model.0 --input_video_path="play.mp4" --output_video_path="play_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/model.0 --input_video_path="VideoInput/167979954199057.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/model.0 --input_video_path="output3.mp4" --output_video_path="output3_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/model.0 --input_video_path="tmp.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
 
 #parse parameters
 parser = argparse.ArgumentParser()
@@ -20,10 +20,10 @@ parser.add_argument("--save_weights_path", type = str  )
 parser.add_argument("--n_classes", type=int )
 
 args = parser.parse_args()
-input_video_path =  args.input_video_path
-output_video_path =  args.output_video_path
+input_video_path = args.input_video_path
+output_video_path = args.output_video_path
 save_weights_path = args.save_weights_path
-n_classes =  args.n_classes
+n_classes = args.n_classes
 
 if output_video_path == "":
 	#output video in same path
@@ -43,10 +43,13 @@ width , height = 640, 360
 img, img1, img2 = None, None, None
 
 #load TrackNet model
-modelFN = Models.TrackNet.TrackNet
-m = modelFN( n_classes , input_height=height, input_width=width   )
-m.compile(loss='categorical_crossentropy', optimizer= 'adadelta' , metrics=['accuracy'])
-m.load_weights(  save_weights_path  )
+# modelFN = Models.TrackNet.TrackNet
+# m = modelFN( n_classes , input_height=height, input_width=width   )
+# m.compile(loss='categorical_crossentropy', optimizer= 'adadelta' , metrics=['accuracy'])
+# m.load_weights(  save_weights_path  )
+from Models.TrackNet import TrackNet_pt
+m = TrackNet_pt(n_classes=n_classes, input_height=height, input_width=width).to('cuda')
+m.load_state_dict(torch.load(save_weights_path))
 
 # In order to draw the trajectory of tennis, we need to save the coordinate of preious 7 frames
 q = queue.deque()
@@ -120,7 +123,8 @@ while(True):
 	#prdict heatmap
 	# import time
 	# start = time.time()
-	pr = m.predict( np.array([X]) )[0]
+	# pr = m.predict( np.array([X]) )[0]
+	pr = m( torch.from_numpy(X).unsqueeze(0).to('cuda'))[0]
 	# print('Last time:', time.time()-start)
 
 	#since TrackNet output is ( net_output_height*model_output_width , n_classes )
@@ -129,6 +133,7 @@ while(True):
 	pr = pr.reshape(( height ,  width , n_classes ) ).argmax( axis=2)
 
 	#cv2 image must be numpy.uint8, convert numpy.int64 to numpy.uint8
+	pr = pr.cpu().detach().numpy()
 	pr = pr.astype(np.uint8)
 
 	# #reshape the image size as original input image
@@ -148,61 +153,6 @@ while(True):
 
 	#find the circle in image with 2<=radius<=7
 	circles = cv2.HoughCircles(heatmap, cv2.HOUGH_GRADIENT,dp=1,minDist=1,param1=50,param2=2,minRadius=2,maxRadius=7)
-	# if circles is None and x>0 and y>0:
-	# 	# 获取图像中所有值大于0的像素点的坐标
-	# 	coords = np.column_stack(np.where(heatmap > 0))
-	# 	if coords
-	#
-	# 	# 根据目标点，计算所有像素点到目标点的距离
-	# 	distances = np.sqrt((coords[:, 0] - y) ** 2 + (coords[:, 1] - x) ** 2)
-	#
-	# 	# 找到距离最小的像素点的索引
-	# 	min_index = np.argmin(distances)
-	#
-	# 	# 获取距离最小的像素点的坐标，即连通域的中心点
-	# 	center_point = coords[min_index]
-	#
-	# 	circles = center_point
-
-	#In order to draw the circle in output_img, we need to used PIL library
-	#Convert opencv image format to PIL image format
-	# delta = ori_img - ori_img1
-	# from matplotlib import pyplot as plt
-	# plt.imshow(delta)
-	# plt.show()
-
-	# ssim_score, diff = cv2.compareStructures(gray, gray2, win_size=(11, 11), sigma=1.5, K1=0.01, K2=0.03, L=255)
-
-
-	# # 对差异图像进行二值化处理
-	# thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)[1]
-	#
-	# # 使用形态学操作去除噪声
-	# kernel = np.ones((5, 5), np.uint8)
-	# thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-
-	# from matplotlib import pyplot as plt
-	# plt.imshow(diff)
-	# plt.show()
-
-	# window_size = 10
-	# half_window = window_size // 2
-	# if circles is not None:
-	# 	for i in range(circles.shape[1]):
-	# 		circle = circles[0][i]
-	# 		x = circle[0]
-	# 		y = circle[1]
-	# 		window = diff[int(y - half_window):int(y + half_window + 1), int(x - half_window):int(x + half_window + 1)]
-	# 		# if np.sum(window)<100:
-	# 		if np.sum(window)<300:
-	# 			circles[0][i][2] = -1
-
-
-	# if circles is not None:
-	# 	for i in range(circles.shape[1]):
-	# 		circle = circles[0][i]
-	# 		bbox = (circle[0] - 6, circle[1] - 6, circle[0] + 6, circle[1] + 6)
-	# 		cv2.rectangle(output_img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (18, 127, 15), thickness=2)
 	PIL_image = cv2.cvtColor(output_img, cv2.COLOR_BGR2RGB)
 	PIL_image = Image.fromarray(PIL_image)
 
@@ -219,7 +169,6 @@ while(True):
 				x = int(circles[0][i][0])
 				y = int(circles[0][i][1])
 				break
-
 			# x = int(circles[0][0][0])
 			# y = int(circles[0][0][1])
 			print(currentFrame, x,y)
