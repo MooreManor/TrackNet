@@ -5,6 +5,7 @@ from keras import optimizers
 # from keras.utils import plot_model
 from keras.utils.vis_utils import plot_model
 import tensorflow as tf
+# tf.compat.v1.disable_v2_behavior()
 import numpy as np
 from torchvision.utils import make_grid
 import os
@@ -16,6 +17,18 @@ from keras.callbacks import LambdaCallback, Callback
 class MemoryCallback(Callback):
     def on_epoch_end(self, epoch, log={}):
         print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+
+import tensorflow
+import gc
+
+# Reset Keras Session
+def reset_keras():
+    K.clear_session()
+    tf.compat.v1.reset_default_graph()
+
+    gc.collect()
+
+
 def train_summaries(vis, epoch, step):
     rend_imgs = []
     for i in range(train_batch_size):
@@ -86,6 +99,7 @@ model_output_width = m.outputWidth
 
 #creat input data and output data
 Generator = LoadBatches.InputOutputGenerator( training_images_name,  train_batch_size,  n_classes , input_height , input_width , model_output_height , model_output_width)
+# Generator = LoadBatches.TennisDataset_keras(training_images_name, train_batch_size,  n_classes, input_height, input_width, model_output_height, model_output_width,  shuffle=True)
 
 
 #start to train the model, and save weights until finish 
@@ -114,6 +128,7 @@ for ep in range(1, epochs+1 ):
     # if ep % 50 == 0:
     K.clear_session()
     tf.compat.v1.reset_default_graph()
+    gc.collect()
     if ep % 20 == 0:
       m.save_weights(save_weights_path + ".0")
 
