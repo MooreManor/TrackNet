@@ -13,6 +13,7 @@ def video_to_images(vid_file, img_folder=None, return_info=False):
                '-i', vid_file,
                '-f', 'image2',
                '-v', 'error',
+               '-start_number', '0',
                f'{img_folder}/%06d.png']
     print(f'Running \"{" ".join(command)}\"')
     subprocess.call(command)
@@ -42,9 +43,11 @@ def gen_tennis_loc_csv(folder, data=None, file_name='tennis_loc.csv'):
         # writer.writeheader()
         writer.writerow(fieldnames)
         # 逐行写入数据
-        for i in range(10):
+        for i in range(data.shape[0]):
             frame = i
-            x = 100 + i
-            y = 200 - i
+            x = data[i][0]
+            y = data[i][1]
 
-            writer.writerow({'帧数': frame, 'x坐标': x, 'y坐标': y})
+            writer.writerow([frame, x, y])
+
+
