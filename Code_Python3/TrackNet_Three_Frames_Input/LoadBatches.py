@@ -3,10 +3,15 @@ import cv2
 import itertools
 import csv
 from collections import defaultdict
+from torchvision.transforms import Normalize
 
+IMG_NORM_MEAN = [0.485, 0.456, 0.406]
+IMG_NORM_STD = [0.229, 0.224, 0.225]
+mean = np.array(IMG_NORM_MEAN, dtype=np.float32)
+std = np.array(IMG_NORM_STD, dtype=np.float32)
 
 #get input array
-def getInputArr( path ,path1 ,path2 , width , height):
+def getInputArr( path ,path1 ,path2 , width , height, flip, rot):
 	try:
 		#read the image
 		img = cv2.imread(path, 1)
@@ -29,8 +34,24 @@ def getInputArr( path ,path1 ,path2 , width , height):
 		#input must be float type
 		img2 = img2.astype(np.float32)
 
+		# random flip
+		if flip==1:
+			img = cv2.flip(img, 1)
+			img1 = cv2.flip(img1, 1)
+			img2 = cv2.flip(img2, 1)
+
+		# random rotation
+		M = cv2.getRotationMatrix2D((width / 2, height / 2), rot, 1)
+		img = cv2.warpAffine(img, M, (width, height))
+		img1 = cv2.warpAffine(img1, M, (width, height))
+		img2 = cv2.warpAffine(img2, M, (width, height))
+
+
 		#combine three imgs to  (width , height, rgb*3)
-		imgs =  np.concatenate((img, img1, img2),axis=2)
+		img = (img - mean) / std
+		img1 = (img1 - mean) / std
+		img2 = (img2 - mean) / std
+		imgs = np.concatenate((img, img1, img2),axis=2)
 
 		#since the odering of TrackNet  is 'channels_first', so we need to change the axis
 		imgs = np.rollaxis(imgs, 2, 0)
@@ -43,12 +64,19 @@ def getInputArr( path ,path1 ,path2 , width , height):
 
 
 #get output array
-def getOutputArr( path , nClasses ,  width , height  ):
+def getOutputArr( path , nClasses ,  width , height , flip, rot):
 
 	seg_labels = np.zeros((  height , width  , nClasses ))
 	try:
 		img = cv2.imread(path, 1)
 		img = cv2.resize(img, ( width , height ))
+		# random flip
+		if flip == 1:
+			img = cv2.flip(img, 1)
+
+		# random rotation
+		M = cv2.getRotationMatrix2D((width / 2, height / 2), rot, 1)
+		img = cv2.warpAffine(img, M, (width, height))
 		img = img[:, : , 0]
 
 		for c in range(nClasses):
@@ -81,9 +109,13 @@ def InputOutputGenerator( images_path,  batch_size,  n_classes , input_height , 
 		Output = []
 		#read input&output for each batch
 		for _ in range( batch_size):
+			flip = 0
+			if np.random.uniform() <= 0.5:
+				flip = 1
+			rot = np.random.randint(-10, 10)
 			path, path1, path2 , anno = next(zipped)
-			Input.append( getInputArr(path, path1, path2 , input_width , input_height) )
-			Output.append( getOutputArr( anno , n_classes , output_width , output_height) )
+			Input.append( getInputArr(path, path1, path2 , input_width , input_height, flip, rot) )
+			Output.append( getOutputArr( anno , n_classes , output_width , output_height, flip, rot) )
 		#return input&output
 		yield np.array(Input) , np.array(Output)
 
