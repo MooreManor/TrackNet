@@ -3,12 +3,12 @@ import cv2
 import itertools
 import csv
 from collections import defaultdict
-from torchvision.transforms import Normalize
+from utils.constants import mean, std
 
-IMG_NORM_MEAN = [0.485, 0.456, 0.406]
-IMG_NORM_STD = [0.229, 0.224, 0.225]
-mean = np.array(IMG_NORM_MEAN, dtype=np.float32)
-std = np.array(IMG_NORM_STD, dtype=np.float32)
+# IMG_NORM_MEAN = [0.485, 0.456, 0.406]
+# IMG_NORM_STD = [0.229, 0.224, 0.225]
+# mean = np.array(IMG_NORM_MEAN, dtype=np.float32)
+# std = np.array(IMG_NORM_STD, dtype=np.float32)
 
 #get input array
 def getInputArr( path ,path1 ,path2 , width , height, flip, rot):
@@ -48,9 +48,9 @@ def getInputArr( path ,path1 ,path2 , width , height, flip, rot):
 
 
 		#combine three imgs to  (width , height, rgb*3)
-		img = (img - mean) / std
-		img1 = (img1 - mean) / std
-		img2 = (img2 - mean) / std
+		# img = (img - mean) / std
+		# img1 = (img1 - mean) / std
+		# img2 = (img2 - mean) / std
 		imgs = np.concatenate((img, img1, img2),axis=2)
 
 		#since the odering of TrackNet  is 'channels_first', so we need to change the axis
@@ -109,10 +109,12 @@ def InputOutputGenerator( images_path,  batch_size,  n_classes , input_height , 
 		Output = []
 		#read input&output for each batch
 		for _ in range( batch_size):
+			# flip = 0
+			# if np.random.uniform() <= 0.5:
+			# 	flip = 1
+			# rot = np.random.randint(-10, 10)
 			flip = 0
-			if np.random.uniform() <= 0.5:
-				flip = 1
-			rot = np.random.randint(-10, 10)
+			rot = 0
 			path, path1, path2 , anno = next(zipped)
 			Input.append( getInputArr(path, path1, path2 , input_width , input_height, flip, rot) )
 			Output.append( getOutputArr( anno , n_classes , output_width , output_height, flip, rot) )

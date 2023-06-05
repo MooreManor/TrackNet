@@ -82,13 +82,15 @@ optimizer_name = Adadelta(lr=1.0)
 criterion = tf.keras.losses.CategoricalCrossentropy()
 #load TrackNet model
 modelTN = Models.TrackNet.TrackNet
-m = modelTN(n_classes, input_height=input_height, input_width=input_width)
+m, pre = modelTN(n_classes, input_height=input_height, input_width=input_width)
 m.compile(loss='categorical_crossentropy', optimizer= optimizer_name, metrics=['accuracy'])
 # m.compile(loss='categorical_crossentropy', optimizer= optimizer_name, metrics=['categorical_accuracy'])
 
 #check if need to retrain the model weights
 if load_weights != "-1":
-    m.load_weights("weights/model." + load_weights)
+    # m.load_weights("weights/model." + load_weights, by_name=True)
+    # m.load_weights("weights/model." + load_weights)
+    pre.load_weights("weights/model." + load_weights)
 
 # #show TrackNet details, save it as TrackNet.png
 # plot_model( m , show_shapes=True , to_file='TrackNet.png')

@@ -2,10 +2,24 @@
 # from keras.layers import *
 from tensorflow.keras.models import *
 from tensorflow.keras.layers import *
+import tensorflow as tf
 import math
 def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, input_width = 640
 
 	imgs_input = Input(shape=(9,input_height,input_width))
+
+	# Get the current frame and the previous frame
+	current_frame = imgs_input[:, 0:3, :, :]
+	previous_frame = imgs_input[:, 3:6, :, :]
+
+	# Compute the frame difference
+	frame_diff = Lambda(lambda x: abs(x[0] - x[1]))([current_frame, previous_frame])
+
+	# Convert to grayscale
+	frame_diff = (Permute((2, 3, 1)))(frame_diff)
+	frame_diff = Lambda(lambda x: tf.image.rgb_to_grayscale(x))(frame_diff)
+	frame_diff = (Permute((3, 1, 2)))(frame_diff)
+
 
 	#layer1
 	x = Conv2D(64, (3, 3), kernel_initializer='random_uniform', padding='same', data_format='channels_first' )(imgs_input)
@@ -115,6 +129,15 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 	x = ( Activation('relu'))(x)
 	x = ( BatchNormalization())(x)
 
+	pre_model = Model(imgs_input, x)
+	#layer25
+	x = Concatenate(axis=1)([x, frame_diff])
+
+	# Apply convolutional layers to concatenated feature maps
+	x = Conv2D(n_classes, (3, 3), kernel_initializer='random_uniform', padding='same', data_format='channels_first')(x)
+	x = Activation('relu')(x)
+	x = BatchNormalization()(x)
+
 	o_shape = Model(imgs_input , x ).output_shape
 	print ("layer24 output shape:", o_shape[1],o_shape[2],o_shape[3])
 	#layer24 output shape: 256, 360, 640
@@ -138,7 +161,8 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 	#show model's details
 	model.summary()
 
-	return model
+	# return model
+	return model, pre_model
 
 
 import torch
