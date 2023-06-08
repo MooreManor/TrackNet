@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import itertools
@@ -11,7 +12,7 @@ from utils.constants import mean, std
 # std = np.array(IMG_NORM_STD, dtype=np.float32)
 
 #get input array
-def getInputArr( path ,path1 ,path2 , width , height, flip, rot):
+def getInputArr( path ,path1 ,path2 , width , height, flip, rot, pn):
 	try:
 		#read the image
 		img = cv2.imread(path, 1)
@@ -46,7 +47,16 @@ def getInputArr( path ,path1 ,path2 , width , height, flip, rot):
 		img1 = cv2.warpAffine(img1, M, (width, height))
 		img2 = cv2.warpAffine(img2, M, (width, height))
 
-
+		# in the rgb image we add pixel noise in a channel-wise manner
+		img[:, :, 0] = np.minimum(255.0, np.maximum(0.0, img[:, :, 0] * pn[0]))
+		img[:, :, 1] = np.minimum(255.0, np.maximum(0.0, img[:, :, 1] * pn[1]))
+		img[:, :, 2] = np.minimum(255.0, np.maximum(0.0, img[:, :, 2] * pn[2]))
+		img1[:, :, 0] = np.minimum(255.0, np.maximum(0.0, img1[:, :, 0] * pn[0]))
+		img1[:, :, 1] = np.minimum(255.0, np.maximum(0.0, img1[:, :, 1] * pn[1]))
+		img1[:, :, 2] = np.minimum(255.0, np.maximum(0.0, img1[:, :, 2] * pn[2]))
+		img2[:, :, 0] = np.minimum(255.0, np.maximum(0.0, img2[:, :, 0] * pn[0]))
+		img2[:, :, 1] = np.minimum(255.0, np.maximum(0.0, img2[:, :, 1] * pn[1]))
+		img2[:, :, 2] = np.minimum(255.0, np.maximum(0.0, img2[:, :, 2] * pn[2]))
 		#combine three imgs to  (width , height, rgb*3)
 		# img = (img - mean) / std
 		# img1 = (img1 - mean) / std
@@ -109,14 +119,14 @@ def InputOutputGenerator( images_path,  batch_size,  n_classes , input_height , 
 		Output = []
 		#read input&output for each batch
 		for _ in range( batch_size):
-			# flip = 0
-			# if np.random.uniform() <= 0.5:
-			# 	flip = 1
-			# rot = np.random.randint(-10, 10)
 			flip = 0
-			rot = 0
+			if np.random.uniform() <= 0.5:
+				flip = 1
+			rot = np.random.randint(-10, 10)
+			pn = np.random.uniform(1 - 0.4, 1 + 0.4, 3)
+
 			path, path1, path2 , anno = next(zipped)
-			Input.append( getInputArr(path, path1, path2 , input_width , input_height, flip, rot) )
+			Input.append( getInputArr(path, path1, path2 , input_width , input_height, flip, rot, pn) )
 			Output.append( getOutputArr( anno , n_classes , output_width , output_height, flip, rot) )
 		#return input&output
 		yield np.array(Input) , np.array(Output)

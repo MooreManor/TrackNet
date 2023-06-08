@@ -20,9 +20,10 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 	frame_diff = Lambda(lambda x: tf.image.rgb_to_grayscale(x))(frame_diff)
 	frame_diff = (Permute((3, 1, 2)))(frame_diff)
 
-
+	x = Concatenate(axis=1)([imgs_input, frame_diff])
 	#layer1
-	x = Conv2D(64, (3, 3), kernel_initializer='random_uniform', padding='same', data_format='channels_first' )(imgs_input)
+	# x = Conv2D(64, (3, 3), kernel_initializer='random_uniform', padding='same', data_format='channels_first' )(imgs_input)
+	x = Conv2D(64, (3, 3), kernel_initializer='random_uniform', padding='same', data_format='channels_first')(x)
 	x = ( Activation('relu'))(x)
 	x = ( BatchNormalization())(x)
 
@@ -129,15 +130,6 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 	x = ( Activation('relu'))(x)
 	x = ( BatchNormalization())(x)
 
-	pre_model = Model(imgs_input, x)
-	#layer25
-	x = Concatenate(axis=1)([x, frame_diff])
-
-	# Apply convolutional layers to concatenated feature maps
-	x = Conv2D(n_classes, (3, 3), kernel_initializer='random_uniform', padding='same', data_format='channels_first')(x)
-	x = Activation('relu')(x)
-	x = BatchNormalization()(x)
-
 	o_shape = Model(imgs_input , x ).output_shape
 	print ("layer24 output shape:", o_shape[1],o_shape[2],o_shape[3])
 	#layer24 output shape: 256, 360, 640
@@ -154,7 +146,7 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 	#layer25
 	gaussian_output = (Activation('softmax'))(x)
 
-	model = Model( imgs_input , gaussian_output)
+	model = Model(imgs_input , gaussian_output)
 	model.outputWidth = OutputWidth
 	model.outputHeight = OutputHeight
 
@@ -162,7 +154,7 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 	model.summary()
 
 	# return model
-	return model, pre_model
+	return model
 
 
 import torch
