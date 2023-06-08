@@ -6,7 +6,7 @@ import queue
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col, save_np_image, pos_pred_flow
+from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col, save_np_image, pos_pred_flow, judge_in_square
 import os.path as osp
 
 # 球的置信度区域
@@ -299,19 +299,26 @@ while(True):
 				steady_x = x
 				steady_y = y
 				update_std_step = currentFrame
-			else:
-				steady_y, steady_x, _ = pos_pred_flow(gray=gray, gray2=gray2, update_step=update_std_step, current_frame=currentFrame,
-													  output_width=output_width, output_height=output_height, steady_x=steady_x,
-													  steady_y=steady_y, predict_x=x, predict_y=y)
-				# steady_x = x
-				# steady_y = y
-				s=1
-				update_std_step = currentFrame
+			# else:
+			# 	steady_y, steady_x, _ = pos_pred_flow(gray=gray, gray2=gray2, update_step=update_std_step, current_frame=currentFrame,
+			# 										  output_width=output_width, output_height=output_height, steady_x=steady_x,
+			# 										  steady_y=steady_y, predict_x=x, predict_y=y)
+			# 	# steady_x = x
+			# 	# steady_y = y
+			# 	s=1
+			# 	update_std_step = currentFrame
+			if steady_x is not None and judge_in_square(x, y, steady_x, steady_y, 200):
+				steady_x = x
+				steady_y = y
+			update_std_step = currentFrame
 			print(currentFrame, x, y, s, steady_x, steady_y)
 
 			#push x,y to queue
 			# q.appendleft([x,y,s])
-			q.appendleft([steady_x,steady_y,s])
+			if steady_x is not None:
+				q.appendleft([steady_x,steady_y,s])
+			else:
+				q.appendleft([x, y, s])
 			#pop x,y from queue
 			q.pop()
 		# else:
@@ -321,10 +328,10 @@ while(True):
 		# 	q.pop()
 	else:
 		#push None to queue
-		steady_y, steady_x, _ = pos_pred_flow(gray=gray, gray2=gray2, update_step=update_std_step,
-											  current_frame=currentFrame,
-											  output_width=output_width, output_height=output_height, steady_x=steady_x,
-											  steady_y=steady_y)
+		# steady_y, steady_x, _ = pos_pred_flow(gray=gray, gray2=gray2, update_step=update_std_step,
+		# 									  current_frame=currentFrame,
+		# 									  output_width=output_width, output_height=output_height, steady_x=steady_x,
+		# 									  steady_y=steady_y)
 		# steady_x = x
 		# steady_y = y
 		s=1
@@ -333,7 +340,7 @@ while(True):
 
 		# push x,y to queue
 		# q.appendleft([x, y, s])
-		q.appendleft([steady_x, steady_y, s])
+		q.appendleft([x, y, s])
 		# q.appendleft(None)
 		#pop x,y from queue
 		q.pop()
@@ -372,6 +379,7 @@ gen_tennis_loc_csv(dst_folder, tennis_loc_arr)
 vols = calculate_velocity(tennis_loc_arr)
 add_csv_col(folder=dst_folder, new_col_name='x速度', data=vols[:, 0], file_name='tennis.csv')
 add_csv_col(folder=dst_folder, new_col_name='y速度', data=vols[:, 1], file_name='tennis.csv')
+# vols[:, 1]
 # everything is done, release the video
 video.release()
 output_video.release()

@@ -219,6 +219,11 @@ def pos_pred_flow(gray, gray2, update_step, current_frame, output_width, output_
     right = min(flow_x + int(FLOW_REG / 2) + 1, output_width)
     bottom = min(flow_y + int(FLOW_REG / 2) + 1, output_height)
     flow_array = flow_val[top:bottom, left:right]
+    # ret, heatmap = cv2.threshold(flow_array, 1, 255, cv2.THRESH_BINARY)
+    # heatmap = heatmap.astype(np.uint8)
+    # circles = cv2.HoughCircles(heatmap, cv2.HOUGH_GRADIENT, dp=1, minDist=10, param1=50, param2=2, minRadius=2,
+    #                            maxRadius=7)
+
     max_pos = np.argmax(flow_array)
     flow_max_y, flow_max_x = np.unravel_index(max_pos, flow_array.shape)
     flow_max_y = flow_max_y + top
