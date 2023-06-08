@@ -4,6 +4,7 @@ import subprocess
 import cv2
 import numpy as np
 
+
 def video_to_images(vid_file, img_folder=None, return_info=False):
     if img_folder is None:
         img_folder = osp.join('/tmp', osp.basename(vid_file).replace('.', '_'))
@@ -32,11 +33,15 @@ def save_PIL_image(PIL_img, img_name, img_folder):
     os.makedirs(img_folder, exist_ok=True)
     PIL_img.save(osp.join(img_folder, img_name))
 
+def save_np_image(img, img_name, img_folder):
+    os.makedirs(img_folder, exist_ok=True)
+    cv2.imwrite(osp.join(img_folder, img_name), img)
+
 def gen_tennis_loc_csv(folder, data=None, file_name='tennis.csv'):
     import csv
     # 定义 CSV 文件路径和字段名
     csv_file_path = osp.join(folder, file_name)
-    fieldnames = ['帧数', 'x坐标', 'y坐标']
+    fieldnames = ['帧数', 'x坐标', 'y坐标', '置信度']
 
     # 创建 CSV 文件并写入字段名
     with open(csv_file_path, mode='w', newline='') as csv_file:
@@ -48,12 +53,15 @@ def gen_tennis_loc_csv(folder, data=None, file_name='tennis.csv'):
             frame = i
             x = data[i][0]
             y = data[i][1]
+            s = data[i][2]
             if x is None:
                 x = 'None'
             if y is None:
                 y = 'None'
+            if s is None:
+                s = 'None'
 
-            writer.writerow([frame, x, y])
+            writer.writerow([frame, x, y, s])
 
 def read_tennis_loc_csv(folder, file_name='tennis.csv'):
     import csv
@@ -100,7 +108,6 @@ def add_csv_col(folder, new_col_name, data=None, file_name='tennis_loc.csv'):
         reader = csv.reader(csvfile)
         rows = list(reader)
 
-    # 添加第四列数据
     rows[0].append(new_col_name)
     for i in range(1, len(rows)):
         # 在这里填写添加第四列数据的代码
@@ -158,4 +165,63 @@ def calculate_velocity(positions):
 
     # return velocities, accelerations
     return np.array(velocities)
+
+def vis_flow(flow, gray1):
+    # 可视化光流场
+    flow_x = flow[..., 0]
+    flow_y = flow[..., 1]
+
+    # 创建画布
+    h, w = gray1.shape
+    canvas = np.zeros((h, w, 3), dtype=np.uint8)
+
+    # 画箭头表示光流向量
+    step = 10  # 控制箭头密度
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            dx = int(flow_x[y, x])
+            dy = int(flow_y[y, x])
+            cv2.arrowedLine(canvas, (x, y), (x + dx, y + dy), (0, 255, 0), 1, tipLength=0.5)
+    cv2.imshow('Optical Flow', canvas)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+# 光流限制范围
+FLOW_REG = 100
+FLOW_THR = 2
+CONF_THR = 0.3
+def judge_in_square(q_point_x, q_point_y, cen_x, cen_y, side):
+    if q_point_x >= cen_x-int(side/2) and q_point_x < cen_x+int(side/2)+1 and q_point_y >= cen_y-int(side/2) and q_point_y < cen_y+int(side/2)+1:
+        return True
+    return False
+def pos_pred_flow(gray, gray2, update_step, current_frame, output_width, output_height, steady_x=None, steady_y=None, predict_x=None, predict_y=None):
+    flow = cv2.calcOpticalFlowFarneback(gray, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    # vis_flow(flow, gray)
+    flow_val = np.linalg.norm(flow, axis=-1)
+    change_steady = False
+    # 有光流且在搜索范围内
+    if predict_x!=None and flow_val[predict_y][predict_x]>FLOW_THR:
+        # if update_step is not None and judge_in_square(predict_x, predict_y, steady_x, steady_y, FLOW_REG):
+        if update_step is not None:
+            change_steady = True
+            return predict_y, predict_x, change_steady
+
+    # 寻找光流中心
+    if update_step is not None:
+        flow_x = steady_x
+        flow_y = steady_y
+    else:
+        flow_x = predict_x
+        flow_y = predict_y
+    # 计算小区域的左上角和右下角坐标
+    left = max(flow_x - int(FLOW_REG / 2), 0)
+    top = max(flow_y - int(FLOW_REG / 2), 0)
+    right = min(flow_x + int(FLOW_REG / 2) + 1, output_width)
+    bottom = min(flow_y + int(FLOW_REG / 2) + 1, output_height)
+    flow_array = flow_val[top:bottom, left:right]
+    max_pos = np.argmax(flow_array)
+    flow_max_y, flow_max_x = np.unravel_index(max_pos, flow_array.shape)
+    flow_max_y = flow_max_y + top
+    flow_max_x = flow_max_x + left
+    return flow_max_y, flow_max_x, change_steady
 

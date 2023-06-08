@@ -95,37 +95,43 @@
 # add_csv_col(folder='./', new_col_name='x速度', data=vols[:, 0], file_name='tennis_loc.csv')
 # add_csv_col(folder='./', new_col_name='y速度', data=vols[:, 1], file_name='tennis_loc.csv')
 
+import cv2
 import numpy as np
-from scipy.linalg import inv
 
-# 系统动态模型（状态转移矩阵）
-A = np.array([[1, 1], [0, 1]])
+# 读取两个图像帧
+frame1 = cv2.imread('000002.png')
+frame2 = cv2.imread('000003.png')
 
-# 测量模型（测量矩阵）
-H = np.array([[1, 0]])
+# 转换为灰度图像
+gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
 
-# 状态协方差矩阵（初始状态不确定性）
-P = np.array([[1000, 0], [0, 1000]])
+# 使用Lucas-Kanade光流算法计算光流场
+flow = cv2.calcOpticalFlowFarneback(gray1, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
-# 过程噪声协方差矩阵
-Q = np.array([[1, 0], [0, 1]])
+# 可视化光流场
+flow_x = flow[..., 0]
+flow_y = flow[..., 1]
 
-# 测量噪声协方差矩阵
-R =np.array([[1]])
+# 创建画布
+h, w = gray1.shape
+canvas = np.zeros((h, w, 3), dtype=np.uint8)
 
-# 初始状态
-x = np.array([[0], [0]])
+# 画箭头表示光流向量
+step = 10  # 控制箭头密度
+for y in range(0, h, step):
+    for x in range(0, w, step):
+        dx = int(flow_x[y, x])
+        dy = int(flow_y[y, x])
+        cv2.arrowedLine(canvas, (x, y), (x + dx, y + dy), (0, 255, 0), 1, tipLength=0.5)
 
-# 测量数据
-measurements = [1, 2, 3, 4, 5]
+# 显示结果
+cv2.imshow('Optical Flow', canvas)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
-for z in measurements:
-    # 执行卡尔曼滤波
-    x_pred = np.dot(A, x)     # 预测状态
-    P_pred = np.dot(np.dot(A, P), A.T) + Q   # 预测协方差矩阵
-    K = np.dot(np.dot(P_pred, H.T), inv(np.dot(np.dot(H, P_pred), H.T) + R))   # 卡尔曼增益
-    x = x_pred + np.dot(K, (z - np.dot(H, x_pred)))    # 更新状态
-    P = np.dot((np.eye(2) - np.dot(K, H)), P_pred)     # 更新协方差矩阵
-
-    # 输出估计值
-    print("估计值:", x.flatten())
+flow = cv2.calcOpticalFlowFarneback(gray1, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+flow_val =  np.linalg.norm(flow, axis=-1)
+max_pos = np.argmax(flow_val)
+y, x = np.unravel_index(max_pos, flow_val.shape)
+pass

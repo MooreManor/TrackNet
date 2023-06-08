@@ -6,9 +6,18 @@ import queue
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col
+from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col, save_np_image, pos_pred_flow
 import os.path as osp
-from utils.court_detector import CourtDetector
+
+# 球的置信度区域
+CONF_REG = 3
+CONF_THR = 0.3
+
+# 置信度高的或者光流法偏移找到的
+steady_x = None
+steady_y = None
+update_std_step = None
+
 
 class KalmanFilter:
 
@@ -93,6 +102,7 @@ output_video.write(img1)
 currentFrame +=1
 #resize it
 ori_img1 = img1.copy()
+# img1 = (img1 - mean) / std
 img1 = cv2.resize(img1, ( width , height ))
 #input must be float type
 img1 = img1.astype(np.float32)
@@ -105,13 +115,14 @@ output_video.write(img)
 currentFrame +=1
 #resize it
 ori_img = img.copy()
+# img = (img - mean) / std
 img = cv2.resize(img, ( width , height))
 #input must be float type
 img = img.astype(np.float32)
 
 frame_num = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 # tennis_loc_arr = np.full((frame_num, 2), -1)
-tennis_loc_arr = np.full((frame_num, 2), None)
+tennis_loc_arr = np.full((frame_num, 3), None)
 
 x=y=0
 
@@ -152,6 +163,7 @@ while(True):
 	#since we need to change the size and type of img, copy it to output_img
 	output_img = img
 
+	# img = (img - mean) / std
 	#resize it
 	img = cv2.resize(img, ( width , height ))
 	#input must be float type
@@ -172,6 +184,8 @@ while(True):
 	#since TrackNet output is ( net_output_height*model_output_width , n_classes )
 	#so we need to reshape image as ( net_output_height, model_output_width , n_classes(depth) )
 	#.argmax( axis=2 ) => select the largest probability as class
+	pr_max = pr.reshape(( height ,  width , n_classes ) ).max( axis=2)
+	pr_max = cv2.resize(pr_max, (output_width, output_height))
 	pr = pr.reshape(( height ,  width , n_classes ) ).argmax( axis=2)
 
 	#cv2 image must be numpy.uint8, convert numpy.int64 to numpy.uint8
@@ -185,7 +199,12 @@ while(True):
 	# 计算两张图像的差异
 	diff = cv2.absdiff(gray, gray2)
 	heatmap = cv2.resize(pr, (output_width, output_height))
-	ret, diff = cv2.threshold(diff,5,255,cv2.THRESH_BINARY)
+	kernel = np.ones((3, 3), dtype=np.uint8)
+	diff = cv2.dilate(diff, kernel, 1)
+	save_np_image(img=heatmap, img_folder=dst_folder + '/htm', img_name="{:06d}.png".format(currentFrame))
+	save_np_image(img=diff, img_folder=dst_folder + '/diff', img_name="{:06d}.png".format(currentFrame))
+	ret, diff = cv2.threshold(diff,10,255,cv2.THRESH_BINARY)
+	save_np_image(img=diff, img_folder=dst_folder + '/thr', img_name="{:06d}.png".format(currentFrame))
 	heatmap = heatmap * diff
 	ori_heatmap = heatmap.copy()
 
@@ -266,22 +285,56 @@ while(True):
 				y = int(circles[0][i][1])
 				break
 
-			# x = int(circles[0][0][0])
-			# y = int(circles[0][0][1])
-			print(currentFrame, x, y)
+			# 计算小区域的左上角和右下角坐标
+			left = max(x - int(CONF_REG/2), 0)
+			top = max(y - int(CONF_REG/2), 0)
+			right = min(x + int(CONF_REG/2) + 1 , output_width)
+			bottom = min(y + int(CONF_REG/2) + 1, output_height)
+
+			# 获取小区域的子数组
+			sub_array = pr_max[top:bottom, left:right]
+			s = np.mean(sub_array)
+			s = float('%.2f' % s)
+			if s>CONF_THR:
+				steady_x = x
+				steady_y = y
+				update_std_step = currentFrame
+			else:
+				steady_y, steady_x, _ = pos_pred_flow(gray=gray, gray2=gray2, update_step=update_std_step, current_frame=currentFrame,
+													  output_width=output_width, output_height=output_height, steady_x=steady_x,
+													  steady_y=steady_y, predict_x=x, predict_y=y)
+				# steady_x = x
+				# steady_y = y
+				s=1
+				update_std_step = currentFrame
+			print(currentFrame, x, y, s, steady_x, steady_y)
 
 			#push x,y to queue
-			q.appendleft([x,y])
+			# q.appendleft([x,y,s])
+			q.appendleft([steady_x,steady_y,s])
 			#pop x,y from queue
 			q.pop()
-		else:
-			#push None to queue
-			q.appendleft(None)
-			#pop x,y from queue
-			q.pop()
+		# else:
+		# 	#push None to queue
+		# 	q.appendleft(None)
+		# 	#pop x,y from queue
+		# 	q.pop()
 	else:
 		#push None to queue
-		q.appendleft(None)
+		steady_y, steady_x, _ = pos_pred_flow(gray=gray, gray2=gray2, update_step=update_std_step,
+											  current_frame=currentFrame,
+											  output_width=output_width, output_height=output_height, steady_x=steady_x,
+											  steady_y=steady_y)
+		# steady_x = x
+		# steady_y = y
+		s=1
+		update_std_step = currentFrame
+		print(currentFrame, x, y, s, steady_x, steady_y)
+
+		# push x,y to queue
+		# q.appendleft([x, y, s])
+		q.appendleft([steady_x, steady_y, s])
+		# q.appendleft(None)
 		#pop x,y from queue
 		q.pop()
 
@@ -291,12 +344,14 @@ while(True):
 		if q[i] is not None:
 			draw_x = q[i][0]
 			draw_y = q[i][1]
+			draw_s = q[i][2]
 			# predictedCoords = kfObj.Estimate(draw_x, draw_y)
 			# draw_x = predictedCoords[0][0]
 			# draw_y = predictedCoords[1][0]
 			bbox = (draw_x - 6, draw_y - 6, draw_x + 6, draw_y + 6)
 			tennis_loc_arr[currentFrame][0] = draw_x
 			tennis_loc_arr[currentFrame][1] = draw_y
+			tennis_loc_arr[currentFrame][2] = draw_s
 			draw = ImageDraw.Draw(PIL_image)
 			# draw.ellipse(bbox, outline ='yellow')
 			draw.rectangle(bbox, outline='red', width=2)
