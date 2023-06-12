@@ -223,10 +223,80 @@ def pos_pred_flow(gray, gray2, update_step, current_frame, output_width, output_
     # heatmap = heatmap.astype(np.uint8)
     # circles = cv2.HoughCircles(heatmap, cv2.HOUGH_GRADIENT, dp=1, minDist=10, param1=50, param2=2, minRadius=2,
     #                            maxRadius=7)
-
+    vis_flow(flow, gray)
     max_pos = np.argmax(flow_array)
     flow_max_y, flow_max_x = np.unravel_index(max_pos, flow_array.shape)
     flow_max_y = flow_max_y + top
     flow_max_x = flow_max_x + left
     return flow_max_y, flow_max_x, change_steady
 
+
+def jud_dir(vols, interval=4):
+    frame_num = vols.shape[0]
+    # i = 4
+    # hit = np.full((frame_num, 3), None)
+    hit = np.zeros(frame_num, dtype=int)
+    final = np.zeros(frame_num, dtype=int)
+
+    for i in range(4, frame_num - 3):
+        window = vols[i:i + 4]
+        signs = np.sign(window)
+        # hit[i] = np.all(signs == signs[0])
+        abs_values = np.abs(window)
+        big = np.all(abs_values > 10)
+        if np.all(signs > 0):
+            hit[i] = 1  # 正符号
+        elif np.all(signs < 0):
+            hit[i] = -1  # 负符号
+        hit[i] *= big
+
+    index_1 = np.where(hit == 1)[0][0]
+    index_2 = np.where(hit == -1)[0][0]
+    if index_1 < index_2:
+        start = index_1
+        dir =1
+    else:
+        start = index_2
+        dir = -1
+    final[start] = 1
+    for i in range(start, frame_num):
+        if hit[i] == -dir:
+            final[i] = 1
+            dir *= -1
+
+    return final, start
+    # while i < frame_num-interval:
+    #
+    #     i += 1
+
+def add_text_to_frame(frame, text, position= (10, 100), color=(0, 0, 255)):
+    # 在左上角添加文本
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 4
+    thickness = 8
+    frame_with_text = cv2.putText(frame, text, position, font, font_scale, color, thickness)
+    return frame_with_text
+
+def add_text_to_video(input_video_path, output_video_path, hit, start):
+    video = cv2.VideoCapture(input_video_path)
+    fps = int(video.get(cv2.CAP_PROP_FPS))
+    output_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    output_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    output_video = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width, output_height))
+    currentFrame = 0
+    while(True):
+        ret, img = video.read()
+        # if there dont have any frame in video, break
+        if not ret:
+            break
+        if start <= currentFrame <= start+10:
+            img = add_text_to_frame(img, "Start", position=(1000, 100), color=(0, 255, 0))
+        tmp = max(0, currentFrame-6)
+        if 1 in hit[tmp: currentFrame] :
+            img = add_text_to_frame(img, "Hit", position=(800, 100))
+        output_video.write(img)
+        currentFrame += 1
+
+    video.release()
+    output_video.release()

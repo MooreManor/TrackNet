@@ -72,24 +72,28 @@
 
 # test
 #------------------------------
-# from TrackNet_Three_Frames_Input.utils.utils import calculate_velocity, add_csv_col
-# import csv
-# import numpy as np
-#
-# # 读取csv文件
-# with open('tennis_loc.csv', newline='') as csvfile:
-#     reader = csv.reader(csvfile)
-#     next(reader) # 跳过第一行
-#     data = []
-#     for row in reader:
-#         if row[1]=='None':
-#             x, y = None, None
-#         else:
-#             x, y = float(row[1]), float(row[2])
-#         data.append([x, y])
-#
-# # 将数据转换为numpy数组
-# data = np.array(data)
+from TrackNet_Three_Frames_Input.utils.utils import calculate_velocity, add_csv_col, jud_dir, add_text_to_video
+import csv
+import numpy as np
+
+# 读取csv文件
+with open('tennis.csv', newline='') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader) # 跳过第一行
+    data = []
+    for row in reader:
+        if row[1]=='None':
+            x, y = None, None
+        else:
+            x, y = float(row[1]), float(row[2])
+        data.append([x, y])
+
+# 将数据转换为numpy数组
+data = np.array(data)
+vols = calculate_velocity(data)
+y_vol = vols[:, 1]
+hit, start = jud_dir(y_vol)
+add_text_to_video('./output3_TrackNet.mp4', 'hit.mp4', hit, start)
 #
 # vols = calculate_velocity(data)
 # add_csv_col(folder='./', new_col_name='x速度', data=vols[:, 0], file_name='tennis_loc.csv')
@@ -99,39 +103,39 @@ import cv2
 import numpy as np
 
 # 读取两个图像帧
-frame1 = cv2.imread('000002.png')
-frame2 = cv2.imread('000003.png')
-
-# 转换为灰度图像
-gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-
-# 使用Lucas-Kanade光流算法计算光流场
-flow = cv2.calcOpticalFlowFarneback(gray1, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-
-# 可视化光流场
-flow_x = flow[..., 0]
-flow_y = flow[..., 1]
-
-# 创建画布
-h, w = gray1.shape
-canvas = np.zeros((h, w, 3), dtype=np.uint8)
-
-# 画箭头表示光流向量
-step = 10  # 控制箭头密度
-for y in range(0, h, step):
-    for x in range(0, w, step):
-        dx = int(flow_x[y, x])
-        dy = int(flow_y[y, x])
-        cv2.arrowedLine(canvas, (x, y), (x + dx, y + dy), (0, 255, 0), 1, tipLength=0.5)
-
-# 显示结果
-cv2.imshow('Optical Flow', canvas)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
-flow = cv2.calcOpticalFlowFarneback(gray1, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-flow_val =  np.linalg.norm(flow, axis=-1)
-max_pos = np.argmax(flow_val)
-y, x = np.unravel_index(max_pos, flow_val.shape)
-pass
+# frame1 = cv2.imread('000002.png')
+# frame2 = cv2.imread('000003.png')
+#
+# # 转换为灰度图像
+# gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+# gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+#
+# # 使用Lucas-Kanade光流算法计算光流场
+# flow = cv2.calcOpticalFlowFarneback(gray1, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+#
+# # 可视化光流场
+# flow_x = flow[..., 0]
+# flow_y = flow[..., 1]
+#
+# # 创建画布
+# h, w = gray1.shape
+# canvas = np.zeros((h, w, 3), dtype=np.uint8)
+#
+# # 画箭头表示光流向量
+# step = 10  # 控制箭头密度
+# for y in range(0, h, step):
+#     for x in range(0, w, step):
+#         dx = int(flow_x[y, x])
+#         dy = int(flow_y[y, x])
+#         cv2.arrowedLine(canvas, (x, y), (x + dx, y + dy), (0, 255, 0), 1, tipLength=0.5)
+#
+# # 显示结果
+# cv2.imshow('Optical Flow', canvas)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
+#
+# flow = cv2.calcOpticalFlowFarneback(gray1, gray2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+# flow_val =  np.linalg.norm(flow, axis=-1)
+# max_pos = np.argmax(flow_val)
+# y, x = np.unravel_index(max_pos, flow_val.shape)
+# pass

@@ -307,18 +307,24 @@ while(True):
 			# 	# steady_y = y
 			# 	s=1
 			# 	update_std_step = currentFrame
-			if steady_x is not None and judge_in_square(x, y, steady_x, steady_y, 200):
+			elif not judge_in_square(x, y, steady_x, steady_y, 100):
+				steady_x = tennis_loc_arr[currentFrame - 1][0] + (
+							tennis_loc_arr[currentFrame - 1][0] - tennis_loc_arr[currentFrame - 2][0])
+				steady_y = tennis_loc_arr[currentFrame - 1][1] + (
+							tennis_loc_arr[currentFrame - 1][1] - tennis_loc_arr[currentFrame - 2][1])
+			else:
 				steady_x = x
 				steady_y = y
-			update_std_step = currentFrame
+			# update_std_step = currentFrame
 			print(currentFrame, x, y, s, steady_x, steady_y)
 
 			#push x,y to queue
 			# q.appendleft([x,y,s])
-			if steady_x is not None:
-				q.appendleft([steady_x,steady_y,s])
-			else:
-				q.appendleft([x, y, s])
+			# if steady_x is not None:
+			# 	q.appendleft([steady_x,steady_y,s])
+			# else:
+			# q.appendleft([x, y, s])
+			q.appendleft([steady_x,steady_y,s])
 			#pop x,y from queue
 			q.pop()
 		# else:
@@ -334,6 +340,8 @@ while(True):
 		# 									  steady_y=steady_y)
 		# steady_x = x
 		# steady_y = y
+		x = tennis_loc_arr[currentFrame-1][0] + (tennis_loc_arr[currentFrame-1][0]-tennis_loc_arr[currentFrame-2][0])
+		y = tennis_loc_arr[currentFrame-1][1] + (tennis_loc_arr[currentFrame-1][1]-tennis_loc_arr[currentFrame-2][1])
 		s=1
 		update_std_step = currentFrame
 		print(currentFrame, x, y, s, steady_x, steady_y)
