@@ -230,3 +230,63 @@ def pos_pred_flow(gray, gray2, update_step, current_frame, output_width, output_
     flow_max_x = flow_max_x + left
     return flow_max_y, flow_max_x, change_steady
 
+def Get_HSV(image):
+    # 1 get trackbar's value
+    hmin = cv2.getTrackbarPos('hmin', 'h_binary')
+    hmax = cv2.getTrackbarPos('hmax', 'h_binary')
+    smin = cv2.getTrackbarPos('smin', 's_binary')
+    smax = cv2.getTrackbarPos('smax', 's_binary')
+    vmin = cv2.getTrackbarPos('vmin', 'v_binary')
+    vmax = cv2.getTrackbarPos('vmax', 'v_binary')
+
+    # 2 to HSV
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hsv = cv2.GaussianBlur(hsv, (3, 3), 0)  # denoise
+    cv2.imshow('hsv', hsv)
+    h, s, v = cv2.split(hsv)
+
+    # 3 set threshold (binary image)
+    # if value in (min, max):white; otherwise:black
+    h_binary = cv2.inRange(np.array(h), np.array(hmin), np.array(hmax))
+    s_binary = cv2.inRange(np.array(s), np.array(smin), np.array(smax))
+    v_binary = cv2.inRange(np.array(v), np.array(vmin), np.array(vmax))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))  # ellipse kernel
+    h_binary = cv2.morphologyEx(h_binary, cv2.MORPH_CLOSE, kernel)
+    s_binary = cv2.morphologyEx(s_binary, cv2.MORPH_CLOSE, kernel)
+    v_binary = cv2.morphologyEx(v_binary, cv2.MORPH_CLOSE, kernel)
+
+    # 4 get binary（对H、S、V三个通道分别与操作）
+    binary = cv2.bitwise_and(h_binary, cv2.bitwise_and(s_binary, v_binary))
+
+    # 6 Show
+    cv2.imshow('h_binary', h_binary)
+    cv2.imshow('s_binary', s_binary)
+    cv2.imshow('v_binary', v_binary)
+    cv2.imshow('binary', binary)
+
+    return binary
+
+def hsv_thr_vis(img_name):
+    # create trackbars
+    cv2.namedWindow('h_binary')
+    cv2.createTrackbar('hmin', 'h_binary', 0, 255, lambda x: None)
+    cv2.createTrackbar('hmax', 'h_binary', 255, 255, lambda x: None)
+
+    cv2.namedWindow('s_binary')
+    cv2.createTrackbar('smin', 's_binary', 0, 255, lambda x: None)
+    cv2.createTrackbar('smax', 's_binary', 255, 255, lambda x: None)
+
+    cv2.namedWindow('v_binary')
+    cv2.createTrackbar('vmin', 'v_binary', 0, 255, lambda x: None)
+    cv2.createTrackbar('vmax', 'v_binary', 255, 255, lambda x: None)
+
+    # load image
+    image = cv2.imread(img_name)
+
+    while True:
+        binary = Get_HSV(image)
+        key = cv2.waitKey(1) & 0xFF
+        if key == 27:  # press 'ESC' to exit
+            break
+
+    cv2.destroyAllWindows()
