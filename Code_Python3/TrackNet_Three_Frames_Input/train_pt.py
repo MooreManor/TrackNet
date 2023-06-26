@@ -33,6 +33,8 @@ input_width = args.input_width
 save_weights_path = args.save_weights_path
 epochs = args.epochs
 load_weights = args.load_weights
+step_per_epochs = 200
+log_frep = 50
 # step_per_epochs = args.step_per_epochs
 
 device = 'cuda'
@@ -74,10 +76,13 @@ criterion = torch.nn.CrossEntropyLoss()
 # criterion = torch.nn.MSELoss()
 for epoch in range(epochs):
     pbar = tqdm(data_loader,
-                total=len(data_loader),
+                # total=len(data_loader),
+                total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs,
                 desc=f'Epoch {epoch}')
     for step, batch in enumerate(pbar):
         # pass
+        if step >= step_per_epochs:
+            break
         input, label, vis_output = batch
         input = input.to(device)
         label = label.to(device)
@@ -95,7 +100,7 @@ for epoch in range(epochs):
         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
         loss.backward()
         optimizer.step()
-        if step % 1 == 0:
+        if step % log_frep == 0:
             vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
             vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
             vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)

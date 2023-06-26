@@ -190,6 +190,7 @@ class TennisDataset(Dataset):
 		path, path1, path2, anno = self.data[index]
 		input = getInputArr(path, path1, path2, self.input_width, self.input_height)
 		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height)
-		gt_ht = cv2.imread(anno, 1)
-		gt_ht = cv2.resize(gt_ht, (self.input_width, self.input_height))
-		return np.array(input), np.array(output), np.array(gt_ht)
+		# gt_ht = cv2.imread(anno, 1)
+		# gt_ht = cv2.resize(gt_ht, (self.input_width, self.input_height))
+		# return np.array(input), np.array(output), np.array(gt_ht)
+		return np.array(input), np.array(output)
