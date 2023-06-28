@@ -11,7 +11,7 @@ from torchvision.utils import make_grid
 
 
 # --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
-# --load_weights=2 --step_per_epochs=200
+# --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
 #parse parameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_weights_path", type = str  )
@@ -34,6 +34,8 @@ save_weights_path = args.save_weights_path
 epochs = args.epochs
 load_weights = args.load_weights
 # step_per_epochs = args.step_per_epochs
+step_per_epochs = 200
+log_frep = 50
 
 device = 'cuda'
 
@@ -74,15 +76,18 @@ criterion = torch.nn.CrossEntropyLoss()
 # criterion = torch.nn.MSELoss()
 for epoch in range(epochs):
     pbar = tqdm(data_loader,
-                total=len(data_loader),
+                # total=len(data_loader),
+                total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs,
                 desc=f'Epoch {epoch}')
     for step, batch in enumerate(pbar):
         # pass
+        if step >= step_per_epochs:
+            break
         input, label, vis_output = batch
         input = input.to(device)
         label = label.to(device)
         pred = net(input)
-        import tensorflow as tf
+        # import tensorflow as tf
         import numpy as np
         # tmp_label = np.array(label.cpu().detach().numpy())
         # tmp_pred = np.array(pred.cpu().detach().numpy())
@@ -95,7 +100,7 @@ for epoch in range(epochs):
         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
         loss.backward()
         optimizer.step()
-        if step % 1 == 0:
+        if step % log_frep == 0:
             vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
             vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
             vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
@@ -106,7 +111,7 @@ for epoch in range(epochs):
             train_summaries(vis, epoch=epoch, step=step)
 
     if epoch % 1 == 0:
-        torch.save(net.state_dict(), save_weights_path + ".0")
+        torch.save(net.state_dict(), save_weights_path + ".pt.0")
     pbar.close()
 
 

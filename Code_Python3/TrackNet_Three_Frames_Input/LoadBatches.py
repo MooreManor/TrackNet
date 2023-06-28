@@ -83,7 +83,7 @@ def InputOutputGenerator( images_path,  batch_size,  n_classes , input_height , 
 		for _ in range( batch_size):
 			path, path1, path2 , anno = next(zipped)
 			Input.append( getInputArr(path, path1, path2 , input_width , input_height) )
-			Output.append( getOutputArr( anno , n_classes , output_width , output_height) )
+			Output.append( getOutputArr(anno, n_classes , output_width , output_height) )
 		#return input&output
 		yield np.array(Input) , np.array(Output)
 
