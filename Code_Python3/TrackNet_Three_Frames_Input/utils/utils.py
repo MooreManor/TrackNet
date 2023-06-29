@@ -32,6 +32,10 @@ def save_PIL_image(PIL_img, img_name, img_folder):
     os.makedirs(img_folder, exist_ok=True)
     PIL_img.save(osp.join(img_folder, img_name))
 
+def save_np_image(img, img_name, img_folder):
+    os.makedirs(img_folder, exist_ok=True)
+    cv2.imwrite(osp.join(img_folder, img_name), img)
+
 def gen_tennis_loc_csv(folder, data=None, file_name='tennis.csv'):
     import csv
     # 定义 CSV 文件路径和字段名

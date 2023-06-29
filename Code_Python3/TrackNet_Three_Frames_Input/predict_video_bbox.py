@@ -6,7 +6,7 @@ import queue
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col
+from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col, save_np_image
 import os.path as osp
 
 class KalmanFilter:
@@ -184,7 +184,12 @@ while(True):
 	# 计算两张图像的差异
 	diff = cv2.absdiff(gray, gray2)
 	heatmap = cv2.resize(pr, (output_width, output_height))
-	ret, diff = cv2.threshold(diff,5,255,cv2.THRESH_BINARY)
+	# kernel = np.ones((3, 3), dtype=np.uint8)
+	# diff = cv2.dilate(diff, kernel, 1)
+	save_np_image(img=heatmap, img_folder=dst_folder + '/htm', img_name="{:06d}.png".format(currentFrame))
+	save_np_image(img=diff, img_folder=dst_folder + '/diff', img_name="{:06d}.png".format(currentFrame))
+	ret, diff = cv2.threshold(diff, 10, 255, cv2.THRESH_BINARY)
+	save_np_image(img=diff, img_folder=dst_folder + '/thr', img_name="{:06d}.png".format(currentFrame))
 	heatmap = heatmap * diff
 	ori_heatmap = heatmap.copy()
 
