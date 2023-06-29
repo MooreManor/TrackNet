@@ -8,6 +8,8 @@ import torch.nn.functional as F
 import os
 import cv2
 from torchvision.utils import make_grid
+import torch.nn as nn
+import numpy as np
 
 
 # --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
@@ -62,9 +64,18 @@ tennis_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes,
                           output_height=input_height, output_width=input_width)
 
 data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
+# data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=0)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
+# data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=0)
 net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
-# optimizer = torch.optim.Adam(net.parameters(), lr=0.1)
+# optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
+# optimizer 1 lr0.01 adam
+# optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
+# optimizer 2 lr0.005 adam
+# optimizer = torch.optim.Adam(net.parameters(), lr=0.005)
+# optimizer 3 lr0.001 adam
+# optimizer = torch.optim.Adam(net.parameters(), lr=0.001)
+# optimizer 4 lr1.0 adadelta
 optimizer = torch.optim.Adadelta(net.parameters(), lr=1.0)
 # optimizer = torch.optim.Adam(net.parameters(), lr=1.0)
 
@@ -72,47 +83,76 @@ optimizer = torch.optim.Adadelta(net.parameters(), lr=1.0)
 #                  total=len(data_loader),
 #                  desc='Epoch 0')
 # criterion = torch.nn.CrossEntropyLoss(reduction='sum')
-criterion = torch.nn.CrossEntropyLoss()
+# criterion = torch.nn.CrossEntropyLoss()
+criterion = nn.BCELoss(size_average=True)
 # criterion = torch.nn.MSELoss()
+batch = next(iter(data_loader))
+input, label, vis_output = batch
 for epoch in range(epochs):
-    pbar = tqdm(data_loader,
-                # total=len(data_loader),
-                total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs,
-                desc=f'Epoch {epoch}')
-    for step, batch in enumerate(pbar):
-        # pass
-        if step >= step_per_epochs:
-            break
-        input, label, vis_output = batch
-        input = input.to(device)
-        label = label.to(device)
-        pred = net(input)
-        # import tensorflow as tf
-        import numpy as np
-        # tmp_label = np.array(label.cpu().detach().numpy())
-        # tmp_pred = np.array(pred.cpu().detach().numpy())
-        # tf.keras.losses.categorical_crossentropy(np.array(label), np.array(pred))
-        # tf.keras.losses.categorical_crossentropy(tmp_label, tmp_pred)
-        # loss = pt_categorical_crossentropy(pred, label)
-        # loss = F.cross_entropy(pred.reshape(-1, pred.shape[2]), torch.argmax(label, dim=2).reshape(-1))
-        loss = criterion(pred.reshape(train_batch_size, input_height, input_width, n_classes).permute(0, 3, 1, 2), torch.argmax(label, dim=2).reshape(train_batch_size, input_height, input_width))
-        # loss = criterion(pred, label.float())
-        pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
-        loss.backward()
-        optimizer.step()
-        if step % log_frep == 0:
-            vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
-            vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
-            vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
-            vis_output = np.array(vis_output).astype(np.uint8)
-            vis = {'vis_input': vis_input,
-                      'vis_pred': vis_pred,
-                      'vis_output': vis_output}
-            train_summaries(vis, epoch=epoch, step=step)
+    input = input.to(device)
+    label = label.to(device)
+    pred = net(input)
+    loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+    # pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
+    print(f'{epoch}/{epochs}', loss)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+            # if step % log_frep == 0:
+    vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
+    # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
+    vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
+    # vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+    vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+    vis_output = np.array(vis_output).astype(np.uint8)
+    vis = {'vis_input': vis_input,
+              'vis_pred': vis_pred,
+              'vis_output': vis_output}
+    train_summaries(vis, epoch=epoch, step=0)
 
-    if epoch % 1 == 0:
-        torch.save(net.state_dict(), save_weights_path + ".pt.0")
-    pbar.close()
+# for epoch in range(epochs):
+#     pbar = tqdm(data_loader,
+#                 # total=len(data_loader),
+#                 total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs,
+#                 desc=f'Epoch {epoch}')
+#     for step, batch in enumerate(pbar):
+#         # pass
+#         if step >= step_per_epochs:
+#             break
+#         input, label, vis_output = batch
+#         input = input.to(device)
+#         label = label.to(device)
+#         pred = net(input)
+#         # import tensorflow as tf
+#         import numpy as np
+#         # tmp_label = np.array(label.cpu().detach().numpy())
+#         # tmp_pred = np.array(pred.cpu().detach().numpy())
+#         # tf.keras.losses.categorical_crossentropy(np.array(label), np.array(pred))
+#         # tf.keras.losses.categorical_crossentropy(tmp_label, tmp_pred)
+#         # loss = pt_categorical_crossentropy(pred, label)
+#         # loss = F.cross_entropy(pred.reshape(-1, pred.shape[2]), torch.argmax(label, dim=2).reshape(-1))
+#         # loss = criterion(pred.reshape(train_batch_size, input_height, input_width, n_classes).permute(0, 3, 1, 2), torch.argmax(label, dim=2).reshape(train_batch_size, input_height, input_width))
+#         # loss = criterion(pred.reshape(train_batch_size, input_height, input_width).unsqueeze(1), label.reshape(train_batch_size, input_height, input_width).unsqueeze(1))
+#         loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+#         # loss = criterion(pred, label.float())
+#         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
+#         loss.backward()
+#         optimizer.step()
+#         if step % log_frep == 0:
+#             vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
+#             # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
+#             vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
+#             # vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+#             vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+#             vis_output = np.array(vis_output).astype(np.uint8)
+#             vis = {'vis_input': vis_input,
+#                       'vis_pred': vis_pred,
+#                       'vis_output': vis_output}
+#             train_summaries(vis, epoch=epoch, step=step)
+#
+#     if epoch % 1 == 0:
+#         torch.save(net.state_dict(), save_weights_path + ".pt.0")
+#     pbar.close()
 
 
 

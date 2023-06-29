@@ -45,20 +45,23 @@ def getInputArr( path ,path1 ,path2 , width , height):
 #get output array
 def getOutputArr( path , nClasses ,  width , height  ):
 
-	seg_labels = np.zeros((  height , width  , nClasses ))
+	# seg_labels = np.zeros((  height , width  , nClasses ))
 	try:
 		img = cv2.imread(path, 1)
 		img = cv2.resize(img, ( width , height ))
-		img = img[:, : , 0]
+		# img = img[:, : , 0]
+		img = img[:, :, 0]/255
+		img = img.astype(np.float32)
 
-		for c in range(nClasses):
-			seg_labels[: , : , c ] = (img == c ).astype(int)
+		# for c in range(nClasses):
+		# 	seg_labels[: , : , c ] = (img == c ).astype(int)
 
 	except Exception as e:
 		print(e)
 		
-	seg_labels = np.reshape(seg_labels, ( width*height , nClasses ))
-	return seg_labels
+	# seg_labels = np.reshape(seg_labels, ( width*height , nClasses ))
+	# return seg_labels
+	return img
 
 
 

@@ -143,8 +143,7 @@ def TrackNet( n_classes ,  input_height, input_width ): # input_height = 360, in
 
 import torch
 import torch.nn as nn
-
-import torch.nn as nn
+import torch.nn.functional as F
 
 def init_weights(m):
     if type(m) == nn.ConvTranspose2d:
@@ -245,9 +244,9 @@ class TrackNet_pt(nn.Module):
 		self.relu23 = nn.ReLU()
 		self.bn23 = nn.BatchNorm2d(64)
 
-		self.layer24 = nn.Conv2d(64, n_classes, kernel_size=3, padding=1)
-		self.relu24 = nn.ReLU()
-		self.bn24 = nn.BatchNorm2d(n_classes)
+		self.layer24 = nn.Conv2d(64, 1, kernel_size=3, padding=1)
+		# self.relu24 = nn.ReLU()
+		# self.bn24 = nn.BatchNorm2d(n_classes)
 
 		# self.softmax = nn.Softmax(dim=1)
 		# self.softmax = nn.Softmax(dim=2)
@@ -363,8 +362,8 @@ class TrackNet_pt(nn.Module):
 
 		# layer24
 		x = self.layer24(x)
-		x = self.relu24(x)
-		x = self.bn24(x)
+		# x = self.relu24(x)
+		# x = self.bn24(x)
 
 		# reshape the size to (n_classes, outputHeight*outputWidth)
 		# 256, 360, 640
@@ -374,7 +373,7 @@ class TrackNet_pt(nn.Module):
 
 		# apply softmax to get the probability distribution
 		# x = self.softmax(x)
-
+		x = F.sigmoid(x)
 		return x
 
 	def init_weights(self, pretrained=''):
