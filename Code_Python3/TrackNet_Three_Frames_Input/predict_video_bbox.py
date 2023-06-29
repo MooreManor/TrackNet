@@ -1,35 +1,58 @@
 import argparse
+import os
+
 import Models
 import queue
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
+from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, gen_court_inf, read_court_inf, read_tennis_loc_csv, calculate_velocity, add_csv_col
+import os.path as osp
 
-# --save_weights_path=weights/model.3 --input_video_path="test.mp4" --output_video_path="test_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="play.mp4" --output_video_path="play_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="VideoInput/167979954199057.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="output3.mp4" --output_video_path="output3_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="tmp.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.0.1 --input_video_path="output3.mp4" --output_video_path="output3_TrackNet.mp4" --n_classes=256
+class KalmanFilter:
+
+    kf = cv2.KalmanFilter(4, 2)
+    kf.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
+    kf.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
+
+    def Estimate(self, coordX, coordY):
+        ''' This function estimates the position of the object'''
+        measured = np.array([[np.float32(coordX)], [np.float32(coordY)]])
+        self.kf.correct(measured)
+        predicted = self.kf.predict()
+        return predicted
+
+kfObj = KalmanFilter()
+# --save_weights_path=weights/model.3 --input_video_path="test.mp4" --n_classes=256
+# --save_weights_path=weights/model.3 --input_video_path="play.mp4" --n_classes=256
+# --save_weights_path=weights/model.3 --input_video_path="VideoInput/167979954199057.mp4" --n_classes=256
+# --save_weights_path=weights/model.3 --input_video_path="output3.mp4" --n_classes=256
+# --save_weights_path=weights/model.3 --input_video_path="tmp.mp4" --n_classes=256
+# --save_weights_path=weights/model.0.1 --input_video_path="output3.mp4" --n_classes=256
 
 #parse parameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_video_path", type=str)
-parser.add_argument("--output_video_path", type=str, default = "")
+# parser.add_argument("--output_video_path", type=str, default = "")
 parser.add_argument("--save_weights_path", type = str  )
 parser.add_argument("--n_classes", type=int )
 
 args = parser.parse_args()
 input_video_path =  args.input_video_path
-output_video_path =  args.output_video_path
+# output_video_path =  args.output_video_path
 save_weights_path = args.save_weights_path
 n_classes =  args.n_classes
 
-if output_video_path == "":
-	#output video in same path
-	output_video_path = input_video_path.split('.')[0] + "_TrackNet.mp4"
+# if output_video_path == "":
+#output video in same path
+output_video_path = input_video_path.split('.')[0] + "_TrackNet.mp4"
 
 #get video fps&video size
+print('Turning the videos to images...')
+dst_folder = f'./tmp/{osp.basename(input_video_path)[:-4]}'
+if not os.path.exists(dst_folder+'/imgs'):
+	video_to_images(input_video_path, img_folder=dst_folder+'/imgs')
+
 video = cv2.VideoCapture(input_video_path)
 fps = int(video.get(cv2.CAP_PROP_FPS))
 output_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -56,7 +79,8 @@ for i in range(0,8):
 #save prediction images as vidoe
 #Tutorial: https://stackoverflow.com/questions/33631489/error-during-saving-a-video-using-python-and-opencv
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_video = cv2.VideoWriter(output_video_path,fourcc, fps, (output_width,output_height))
+output_video_path = osp.join(dst_folder, output_video_path)
+output_video = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width,output_height))
 
 
 #both first and second frames cant be predict, so we directly write the frames to output video
@@ -84,8 +108,29 @@ img = cv2.resize(img, ( width , height))
 #input must be float type
 img = img.astype(np.float32)
 
+frame_num = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+# tennis_loc_arr = np.full((frame_num, 2), -1)
+tennis_loc_arr = np.full((frame_num, 2), None)
 
 x=y=0
+
+# # court
+# court_detector = CourtDetector()
+# print('Detecting the court')
+# # lines = court_detector.detect(ori_img)
+#
+# if not os.path.isfile(dst_folder+'/lines.txt'):
+# 	lines = court_detector.detect(ori_img)
+# 	gen_court_inf(dst_folder, data=lines)
+# else:
+# 	lines = read_court_inf(dst_folder)
+
+# for i in range(0, len(lines), 1):
+# 	x1, y1, x2, y2 = lines[i][0], lines[i][1], lines[i][2], lines[i][3]
+# 	cv2.line(ori_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 5)
+# from matplotlib import pyplot as plt
+# plt.imshow(ori_img)
+# plt.show()
 while(True):
 
 	ori_img2 = ori_img1
@@ -140,7 +185,7 @@ while(True):
 	diff = cv2.absdiff(gray, gray2)
 	heatmap = cv2.resize(pr, (output_width, output_height))
 	ret, diff = cv2.threshold(diff,5,255,cv2.THRESH_BINARY)
-	# heatmap = heatmap * diff
+	heatmap = heatmap * diff
 	ori_heatmap = heatmap.copy()
 
 	#heatmap is converted into a binary image by threshold method.
@@ -222,7 +267,7 @@ while(True):
 
 			# x = int(circles[0][0][0])
 			# y = int(circles[0][0][1])
-			print(currentFrame, x,y)
+			print(currentFrame, x, y)
 
 			#push x,y to queue
 			q.appendleft([x,y])
@@ -245,7 +290,12 @@ while(True):
 		if q[i] is not None:
 			draw_x = q[i][0]
 			draw_y = q[i][1]
+			# predictedCoords = kfObj.Estimate(draw_x, draw_y)
+			# draw_x = predictedCoords[0][0]
+			# draw_y = predictedCoords[1][0]
 			bbox = (draw_x - 6, draw_y - 6, draw_x + 6, draw_y + 6)
+			tennis_loc_arr[currentFrame][0] = draw_x
+			tennis_loc_arr[currentFrame][1] = draw_y
 			draw = ImageDraw.Draw(PIL_image)
 			# draw.ellipse(bbox, outline ='yellow')
 			draw.rectangle(bbox, outline='red', width=2)
@@ -255,11 +305,17 @@ while(True):
 	#Convert PIL image format back to opencv image format
 	opencvImage = cv2.cvtColor(np.array(PIL_image), cv2.COLOR_RGB2BGR)
 	#write image to output_video
+	save_PIL_image(PIL_img=PIL_image, img_folder=dst_folder + '/bbox', img_name="{:06d}.png".format(currentFrame))
 	output_video.write(opencvImage)
 
 	#next frame
 	currentFrame += 1
 
+gen_tennis_loc_csv(dst_folder, tennis_loc_arr)
+# teenis_loc = read_tennis_loc_csv(dst_folder)
+vols = calculate_velocity(tennis_loc_arr)
+add_csv_col(folder=dst_folder, new_col_name='x速度', data=vols[:, 0], file_name='tennis.csv')
+add_csv_col(folder=dst_folder, new_col_name='y速度', data=vols[:, 1], file_name='tennis.csv')
 # everything is done, release the video
 video.release()
 output_video.release()

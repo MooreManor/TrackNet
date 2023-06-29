@@ -43,7 +43,8 @@ device = 'cuda'
 
 def train_summaries(vis, epoch, step):
     rend_imgs = []
-    for i in range(vis['vis_pred'].shape[0]):
+    nb_max_img = min(6, vis['vis_pred'].shape[0])
+    for i in range(nb_max_img):
         vis_input = vis['vis_input'][i]
         vis_pred = vis['vis_pred'][i]
         vis_output = vis['vis_output'][i]
@@ -53,6 +54,7 @@ def train_summaries(vis, epoch, step):
     images_pred = make_grid(rend_imgs, nrow=3)
     images_pred = images_pred.numpy().transpose(1, 2, 0)
     save_dir = os.path.join('logs', 'train_output_images')
+    # save_dir = os.path.join('logs', 'train_output_images_bs')
     os.makedirs(save_dir, exist_ok=True)
     cv2.imwrite(
         os.path.join(save_dir, f'result_epoch{epoch:02d}_step{step:05d}.png'),
@@ -86,6 +88,9 @@ optimizer = torch.optim.Adadelta(net.parameters(), lr=1.0)
 # criterion = torch.nn.CrossEntropyLoss()
 criterion = nn.BCELoss(size_average=True)
 # criterion = torch.nn.MSELoss()
+
+#---------------------------------------------------------------------
+# single sample overfit
 batch = next(iter(data_loader))
 input, label, vis_output = batch
 for epoch in range(epochs):
@@ -110,6 +115,8 @@ for epoch in range(epochs):
               'vis_output': vis_output}
     train_summaries(vis, epoch=epoch, step=0)
 
+# #---------------------------------------------------------------------
+# # train
 # for epoch in range(epochs):
 #     pbar = tqdm(data_loader,
 #                 # total=len(data_loader),
@@ -123,19 +130,10 @@ for epoch in range(epochs):
 #         input = input.to(device)
 #         label = label.to(device)
 #         pred = net(input)
-#         # import tensorflow as tf
-#         import numpy as np
-#         # tmp_label = np.array(label.cpu().detach().numpy())
-#         # tmp_pred = np.array(pred.cpu().detach().numpy())
-#         # tf.keras.losses.categorical_crossentropy(np.array(label), np.array(pred))
-#         # tf.keras.losses.categorical_crossentropy(tmp_label, tmp_pred)
-#         # loss = pt_categorical_crossentropy(pred, label)
-#         # loss = F.cross_entropy(pred.reshape(-1, pred.shape[2]), torch.argmax(label, dim=2).reshape(-1))
-#         # loss = criterion(pred.reshape(train_batch_size, input_height, input_width, n_classes).permute(0, 3, 1, 2), torch.argmax(label, dim=2).reshape(train_batch_size, input_height, input_width))
-#         # loss = criterion(pred.reshape(train_batch_size, input_height, input_width).unsqueeze(1), label.reshape(train_batch_size, input_height, input_width).unsqueeze(1))
 #         loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
 #         # loss = criterion(pred, label.float())
 #         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
+#         optimizer.zero_grad()
 #         loss.backward()
 #         optimizer.step()
 #         if step % log_frep == 0:
