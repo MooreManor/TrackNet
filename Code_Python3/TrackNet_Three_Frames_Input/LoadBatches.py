@@ -43,12 +43,13 @@ def getInputArr( path ,path1 ,path2 , width , height):
 
 
 #get output array
-def getOutputArr( path , nClasses ,  width , height  ):
+def getOutputArr( path , nClasses ,  width , height, resize=1):
 
 	# seg_labels = np.zeros((  height , width  , nClasses ))
 	try:
 		img = cv2.imread(path, 1)
-		img = cv2.resize(img, ( width , height ))
+		if resize:
+			img = cv2.resize(img, ( width , height ))
 		# img = img[:, : , 0]
 		img = img[:, :, 0]/255
 		img = img.astype(np.float32)
@@ -97,13 +98,15 @@ import torch
 from torch.utils.data import Dataset
 
 class TennisDataset(Dataset):
-	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width, num_images=0):
+	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width, train=True, num_images=0):
 		self.images_path = images_path
 		self.n_classes = n_classes
 		self.input_height = input_height
 		self.input_width = input_width
 		self.output_height = output_height
 		self.output_width = output_width
+		self.train = train
+		self.resize = train
 		# read csv file to 'zipped'
 		columns = defaultdict(list)
 		with open(images_path) as f:
@@ -125,7 +128,7 @@ class TennisDataset(Dataset):
 	def __getitem__(self, index):
 		path, path1, path2, anno = self.data[index]
 		input = getInputArr(path, path1, path2, self.input_width, self.input_height)
-		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height)
+		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height, self.resize)
 		gt_ht = cv2.imread(anno, 1)
 		gt_ht = cv2.resize(gt_ht, (self.input_width, self.input_height))
 		return np.array(input), np.array(output), np.array(gt_ht)

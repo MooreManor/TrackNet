@@ -7,9 +7,11 @@ import argparse
 import torch.nn.functional as F
 import os
 import cv2
-from torchvision.utils import make_grid
 import torch.nn as nn
 import numpy as np
+from tensorboardX import SummaryWriter
+from utils.train_utils import get_log_dir, train_summaries, eval_summaries
+import logging
 
 
 # --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
@@ -36,40 +38,28 @@ save_weights_path = args.save_weights_path
 epochs = args.epochs
 load_weights = args.load_weights
 # step_per_epochs = args.step_per_epochs
-step_per_epochs = 200
-log_frep = 50
+step_per_epochs = 100
+train_log_frep = 50
+eval_log_frep = 200
 eval_freq = 1
 
 device = 'cuda'
 
-def train_summaries(vis, epoch, step):
-    rend_imgs = []
-    nb_max_img = min(6, vis['vis_pred'].shape[0])
-    for i in range(nb_max_img):
-        vis_input = vis['vis_input'][i]
-        vis_pred = vis['vis_pred'][i]
-        vis_output = vis['vis_output'][i]
-        rend_imgs.append(torch.from_numpy(vis_input).permute(2, 0, 1))
-        rend_imgs.append(torch.from_numpy(vis_pred).permute(2, 0, 1))
-        rend_imgs.append(torch.from_numpy(vis_output).permute(2, 0, 1))
-    images_pred = make_grid(rend_imgs, nrow=3)
-    images_pred = images_pred.numpy().transpose(1, 2, 0)
-    save_dir = os.path.join('logs', 'train_output_images')
-    # save_dir = os.path.join('logs', 'train_output_images_bs')
-    os.makedirs(save_dir, exist_ok=True)
-    cv2.imwrite(
-        os.path.join(save_dir, f'result_epoch{epoch:02d}_step{step:05d}.png'),
-        cv2.cvtColor(images_pred, cv2.COLOR_BGR2RGB)
-    )
 
+log_dir = get_log_dir(exp_name='hm')
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+logging.basicConfig(filename=log_dir+'/my.log', level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+# summary_writer = SummaryWriter(log_dir)
 tennis_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width)
-eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
+eval_dt = TennisDataset(images_path='eval.csv', n_classes=n_classes, input_height=input_height, input_width=input_width,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width)
 
 data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
+eval_data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=0)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=0)
@@ -121,6 +111,7 @@ criterion = nn.BCELoss(size_average=True)
 
 # #---------------------------------------------------------------------
 # # train
+best_acc = 100000
 for epoch in range(epochs):
     pbar = tqdm(data_loader,
                 # total=len(data_loader),
@@ -141,7 +132,7 @@ for epoch in range(epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if step % log_frep == 0:
+        if step % train_log_frep == 0:
             vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
             # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
             vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
@@ -151,14 +142,40 @@ for epoch in range(epochs):
             vis = {'vis_input': vis_input,
                       'vis_pred': vis_pred,
                       'vis_output': vis_output}
-            train_summaries(vis, epoch=epoch, step=step)
-
-
-    # if epoch % eval_freq == 0:
-
-    if epoch % 1 == 0:
-        torch.save(net.state_dict(), save_weights_path + ".pt.0")
+            train_summaries(vis, epoch=epoch, step=step, log_dir=log_dir)
     pbar.close()
+
+
+    if epoch % eval_freq == 0:
+        eval_pbar = tqdm(eval_data_loader,
+                    total=len(eval_data_loader))
+        all_loss = 0
+        for step, batch in enumerate(eval_pbar):
+            input, label, vis_output = batch
+            input = input.to(device)
+            label = label.to(device)
+            with torch.no_grad():
+                pred = net(input)
+            loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+            all_loss += loss.item()
+            if step % eval_log_frep == 0:
+                vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
+                vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1) * 255.
+                vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+                vis_output = np.array(vis_output).astype(np.uint8)
+                vis = {'vis_input': vis_input,
+                       'vis_pred': vis_pred,
+                       'vis_output': vis_output}
+                eval_summaries(vis, epoch=epoch, step=step, log_dir=log_dir)
+        logging.info(f"Epoch {epoch}: {all_loss}")
+        # logging.info(f"Epoch 0: {all_loss}")
+
+        # summary_writer.add_scalar('val_loss', all_loss, global_step=epoch)
+        if best_acc>all_loss:
+            best_acc = min(best_acc, all_loss)
+            logging.info(f"Best eval loss Found at epoch {epoch}: {best_acc}")
+            torch.save(net.state_dict(), save_weights_path + ".pt.0")
+        eval_pbar.close()
 
 
 

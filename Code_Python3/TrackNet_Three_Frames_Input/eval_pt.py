@@ -37,12 +37,14 @@ load_weights = args.load_weights
 step_per_epochs = 200
 log_frep = 50
 eval_freq = 1
+output_width = 1920
+output_height = 1080
 
 device = 'cuda'
 
 eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
                           # output_height=input_height, output_width=input_width, num_images=64)
-                          output_height=input_height, output_width=input_width)
+                          output_height=input_height, output_width=input_width, train=False)
 
 net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
 # data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
@@ -51,6 +53,12 @@ data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, nu
 pbar = tqdm(data_loader,
                 # total=len(data_loader),
                 total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs)
+
+TP = 0
+TN = 0
+FP = 0
+FN = 0
+ALL_HAS = 0
 for step, batch in enumerate(pbar):
     input, label, vis_output = batch
     input = input.to(device)
@@ -59,19 +67,44 @@ for step, batch in enumerate(pbar):
     pred = pred.reshape((train_batch_size, input_height, input_width))
     # pr = np.array([cv2.resize(img, (output_width, output_height)) for img in pr])
     heatmap = pred.cpu().numpy().astype(np.uint8)
-    # heatmap = np.array([cv2.resize(img, (input_width, input_height)) for img in pred])
+    heatmap = np.array([cv2.resize(img, (output_width, output_height)) for img in heatmap])
+    # heatmap = np.array([cv2.resize(img, (output_width, output_height)) for img in heatmap])
     # cv2.resize(pr, (output_width, output_height))
     heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
     pred_has_circle = [np.max(img) > 0 for img in heatmap]
-    pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1, minDist=1, param1=50, param2=2, minRadius=2, maxRadius=7) for img in heatmap]
+    pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1,minDist=10,param2=2,minRadius=2,maxRadius=7) for img in heatmap]
 
-    outputs = (label*255).reshape((train_batch_size, input_height, input_width))
+    outputs = (label*255).reshape((train_batch_size, output_height, output_width))
     # outputs = outputs.reshape((train_batch_size, height, width, n_classes)).argmax(axis=3)
     # outputs = cv2.threshold(outputs, 127, 255, cv2.THRESH_BINARY)
     outputs = outputs.numpy().astype(np.uint8)
-    outputs = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in outputs]
+    # outputs = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in outputs]
     gt_has_circle = [np.max(img)>0 for img in outputs]
-    gt_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1, minDist=1, param1=50, param2=2, minRadius=2, maxRadius=7) for img in outputs]
+    gt_circles = np.array([np.where(img==np.max(img)) for img in outputs]).squeeze()
+    for j in range(train_batch_size):
+        tmp_hp = pred_has_circle[j]
+        tmp_hg = gt_has_circle[j]
+        if tmp_hg==1:
+            ALL_HAS += 1
+        if pred_circles[j] is None:
+            if tmp_hg==0:
+                TN += 1
+            else:
+                FN += 1
+            continue
+        tmp_pred = pred_circles[j][0][0][:2]
+        tmp_gt = gt_circles[j][0][0][:2]
+
+        # if tmp_hp==tmp_hg and tmp_hg==1:
+        if tmp_hp==1:
+            delta_circle = abs(tmp_pred - tmp_gt)
+            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 100 and tmp_hp==tmp_hg:
+                TP += 1
+            else:
+                FP += 1
+
+
+
 
 
 

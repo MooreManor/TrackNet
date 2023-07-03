@@ -6,3 +6,4 @@
 *.pyc
 weights/
 *.pkl
+logs/
