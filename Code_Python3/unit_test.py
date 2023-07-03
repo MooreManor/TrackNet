@@ -36,38 +36,31 @@
 #         optimizer.step()
 
 
-# loss
-#--------------------
-import tensorflow as tf
+from TrackNet_Three_Frames_Input.utils.utils import calculate_velocity, add_csv_col, jud_dir, add_text_to_video
+import csv
 import numpy as np
-# y_true = [[[0., 0.9, 1.0, 0.0, 1.0, 0.0]]]
-# y_pred = [[[0.4, 0.6, 0.8, 0.2, 0.9, 0.2]]]
-
-y_true = [[[0.,0.9]]]
-y_pred = [[[0.4,0.6]]]
-loss = tf.keras.losses.categorical_crossentropy(np.array(y_true), np.array(y_pred))
-loss.numpy()
-print('tf.keras.losses.categorical_crossentropy', loss)
-
-loss = -(0 * tf.math.log(0.4) + 0.9 * tf.math.log(0.6))
-print('tf.math.log', loss)
-
-import torch
-
-loss = -(0 * torch.log(torch.tensor(0.4)) + 0.9 * torch.log(torch.tensor(0.6)))
-print('torch.loss', loss)
 
 
-def pt_categorical_crossentropy(pred, label):
-    """
-    使用pytorch 来实现 categorical_crossentropy
-    """
-    # print(-label * torch.log(pred))
-    return torch.sum(-label * torch.log(pred))
+# 读取csv文件
+with open('./TrackNet_Three_Frames_Input/tennis.csv', newline='') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader) # 跳过第一行
+    data = []
+    for row in reader:
+        if row[1]=='None':
+            x, y = None, None
+        else:
+            x, y = float(row[1]), float(row[2])
+        data.append([x, y])
 
-
-loss = pt_categorical_crossentropy(torch.tensor(y_pred), torch.tensor(y_true))
-print(loss)
+start_frame=8
+end_frame=len(data)
+# 将数据转换为numpy数组
+data = np.array(data)
+vols = calculate_velocity(data)
+y_vol = vols[:, 1]
+hit, start = jud_dir(y_vol)
+add_text_to_video('./TrackNet_Three_Frames_Input/168113494209423_TrackNet.mp4', './TrackNet_Three_Frames_Input/hit.mp4', hit, start)
 
 
 

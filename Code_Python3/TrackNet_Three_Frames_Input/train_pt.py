@@ -38,6 +38,7 @@ load_weights = args.load_weights
 # step_per_epochs = args.step_per_epochs
 step_per_epochs = 200
 log_frep = 50
+eval_freq = 1
 
 device = 'cuda'
 
@@ -62,6 +63,9 @@ def train_summaries(vis, epoch, step):
     )
 
 tennis_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
+                          # output_height=input_height, output_width=input_width, num_images=64)
+                          output_height=input_height, output_width=input_width)
+eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width)
 
@@ -91,66 +95,70 @@ criterion = nn.BCELoss(size_average=True)
 
 #---------------------------------------------------------------------
 # single sample overfit
-batch = next(iter(data_loader))
-input, label, vis_output = batch
-for epoch in range(epochs):
-    input = input.to(device)
-    label = label.to(device)
-    pred = net(input)
-    loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
-    # pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
-    print(f'{epoch}/{epochs}', loss)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-            # if step % log_frep == 0:
-    vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
-    # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
-    vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
-    # vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
-    vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
-    vis_output = np.array(vis_output).astype(np.uint8)
-    vis = {'vis_input': vis_input,
-              'vis_pred': vis_pred,
-              'vis_output': vis_output}
-    train_summaries(vis, epoch=epoch, step=0)
+# batch = next(iter(data_loader))
+# input, label, vis_output = batch
+# for epoch in range(epochs):
+#     input = input.to(device)
+#     label = label.to(device)
+#     pred = net(input)
+#     loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+#     # pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
+#     print(f'{epoch}/{epochs}', loss)
+#     optimizer.zero_grad()
+#     loss.backward()
+#     optimizer.step()
+#             # if step % log_frep == 0:
+#     vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
+#     # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
+#     vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
+#     # vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+#     vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+#     vis_output = np.array(vis_output).astype(np.uint8)
+#     vis = {'vis_input': vis_input,
+#               'vis_pred': vis_pred,
+#               'vis_output': vis_output}
+#     train_summaries(vis, epoch=epoch, step=0)
 
 # #---------------------------------------------------------------------
 # # train
-# for epoch in range(epochs):
-#     pbar = tqdm(data_loader,
-#                 # total=len(data_loader),
-#                 total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs,
-#                 desc=f'Epoch {epoch}')
-#     for step, batch in enumerate(pbar):
-#         # pass
-#         if step >= step_per_epochs:
-#             break
-#         input, label, vis_output = batch
-#         input = input.to(device)
-#         label = label.to(device)
-#         pred = net(input)
-#         loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
-#         # loss = criterion(pred, label.float())
-#         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
-#         optimizer.zero_grad()
-#         loss.backward()
-#         optimizer.step()
-#         if step % log_frep == 0:
-#             vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
-#             # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
-#             vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
-#             # vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
-#             vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
-#             vis_output = np.array(vis_output).astype(np.uint8)
-#             vis = {'vis_input': vis_input,
-#                       'vis_pred': vis_pred,
-#                       'vis_output': vis_output}
-#             train_summaries(vis, epoch=epoch, step=step)
-#
-#     if epoch % 1 == 0:
-#         torch.save(net.state_dict(), save_weights_path + ".pt.0")
-#     pbar.close()
+for epoch in range(epochs):
+    pbar = tqdm(data_loader,
+                # total=len(data_loader),
+                total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs,
+                desc=f'Epoch {epoch}')
+    net.train()
+    for step, batch in enumerate(pbar):
+        # pass
+        if step >= step_per_epochs:
+            break
+        input, label, vis_output = batch
+        input = input.to(device)
+        label = label.to(device)
+        pred = net(input)
+        loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+        # loss = criterion(pred, label.float())
+        pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if step % log_frep == 0:
+            vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
+            # vis_pred = pred.reshape(pred.shape[0], input_height, input_width, n_classes)
+            vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1)*255.
+            # vis_pred = torch.argmax(vis_pred, dim=-1).unsqueeze(-1).repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+            vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+            vis_output = np.array(vis_output).astype(np.uint8)
+            vis = {'vis_input': vis_input,
+                      'vis_pred': vis_pred,
+                      'vis_output': vis_output}
+            train_summaries(vis, epoch=epoch, step=step)
+
+
+    # if epoch % eval_freq == 0:
+
+    if epoch % 1 == 0:
+        torch.save(net.state_dict(), save_weights_path + ".pt.0")
+    pbar.close()
 
 
 

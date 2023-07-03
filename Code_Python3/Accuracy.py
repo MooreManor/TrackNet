@@ -19,8 +19,8 @@ for model in [2]:
     statistics  = []
     GroundTruth = {}
     
-    images_path = expanduser("~")+'/dataset/tennis/'
-    dirs = glob.glob(images_path+'data/Clip*')
+    images_path = '/datasetb/tennis/'
+    dirs = (glob.glob(images_path+'game*[0-9]/Clip*'))
     for number in dirs:
         #################change the path####################################################
         
@@ -61,7 +61,7 @@ for model in [2]:
             pic_name = row[0]
             pic_number = pic_number + 1
             #################change the Dataset path####################################################
-            heatmap = cv2.imread(pic_name.replace( expanduser("~")+"/dataset/tennis/data/",  predition_path),0)
+            heatmap = cv2.imread(pic_name.replace("/datasetb/tennis/data/",  predition_path),0)
             #print(pic_name.replace(expanduser("~")+'/dataset/tennis/data/',predition_path))
             ####################################################################################
             
