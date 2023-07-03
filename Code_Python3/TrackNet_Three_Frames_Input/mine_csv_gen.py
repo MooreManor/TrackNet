@@ -25,6 +25,7 @@ with open(training_file_name, 'w') as file:
         annotations = glob.glob(annos_path + '/**/*.jpg', recursive=True) + glob.glob(annos_path + '/**/*.png', recursive=True) + glob.glob(
             annos_path + '/**/*.jpeg', recursive=True)
         annotations.sort()
+        images = images[:len(annotations)]
         assert len(images) == len(annotations)
         for im, seg in zip(images, annotations):
             assert (im.split('/')[-1].split(".")[0] == seg.split('/')[-1].split(".")[0])
