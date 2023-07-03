@@ -45,7 +45,7 @@ n_classes =  args.n_classes
 
 # if output_video_path == "":
 #output video in same path
-output_video_path = input_video_path.split('.')[0] + "_TrackNet.mp4"
+output_video_path = input_video_path.split('/')[-1].split('.')[0] + "_TrackNet.mp4"
 
 #get video fps&video size
 print('Turning the videos to images...')
@@ -80,6 +80,7 @@ for i in range(0,8):
 #Tutorial: https://stackoverflow.com/questions/33631489/error-during-saving-a-video-using-python-and-opencv
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
 output_video_path = osp.join(dst_folder, output_video_path)
+print(output_video_path)
 output_video = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width,output_height))
 
 
