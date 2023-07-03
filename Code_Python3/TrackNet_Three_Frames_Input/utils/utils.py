@@ -132,7 +132,8 @@ def calculate_velocity(positions):
         else:
             flag = 0
             for j in range(i - 1, -1, -1):
-                if positions[j][0] != None:
+                # if positions[j][0] != None:
+                if positions[j][0] != None and positions[i][0] - positions[j][0]<50 and positions[i][1] - positions[j][1]<50:
                     dx = positions[i][0] - positions[j][0]
                     dy = positions[i][1] - positions[j][1]
                     flag=1
@@ -162,3 +163,109 @@ def calculate_velocity(positions):
 
     # return velocities, accelerations
     return np.array(velocities)
+
+def find_start_of_hit(lst, value):
+    result = []
+    start = None
+    for i, x in enumerate(lst):
+        if x == value:
+            if start is None:
+                start = i
+                result.append(start)
+            # elif lst[i-1] != 1:
+            #     result.append(start)
+            #     start = i
+        elif x == -value:
+            start = None
+    # if start is not None:
+    #     result.append(start)
+    return result
+
+def jud_dir(y_vols, x_vols,interval=4):
+    frame_num = y_vols.shape[0]
+    # i = 4
+    # hit = np.full((frame_num, 3), None)
+    hit = np.zeros(frame_num, dtype=int)
+    final = np.zeros(frame_num, dtype=int)
+
+    for i in range(4, frame_num - 3):
+        window = y_vols[i:i + 4]
+        window_x = x_vols[i:i + 4]
+        signs = np.array([np.sign(win) for win in window if win is not None])
+        # abs_values = np.array([np.abs(win) for win in window if win is not None])
+        # big = np.all(abs_values > 10) and len(abs_values)>0
+        values = np.array([win for win in window if win is not None])
+        x_values = np.array([win for win in window_x if win is not None])
+        big1 = np.all(values > 3) and len(values)>0 # 对面的
+        big2 = np.all(values < -10) and len(values)>0
+        x_abs_values = np.array([np.abs(win) for win in x_values if win is not None])
+        x_big = np.all(x_abs_values > 1) and len(x_abs_values)>0
+        big = big1+big2
+        if np.all(signs > 0):
+            hit[i] = 1  # 正符号
+        elif np.all(signs < 0):
+            hit[i] = -1  # 负符号
+        hit[i] *= big
+        hit[i] *= x_big
+
+    index_1 = np.where(hit == 1)[0][0]
+    index_2 = np.where(hit == -1)[0][0]
+    # index_3 = [i for i, x in enumerate(hit) if x == 1 and (i == 0 or hit[i-1] != 1)][-1]
+    index_3 = find_start_of_hit(hit, 1)[-1]
+    index_4 = find_start_of_hit(hit, -1)[-1]
+    end = index_3 if index_3 > index_4 else index_4
+    if index_1 < index_2:
+        start = index_1
+        dir =1
+    else:
+        start = index_2
+        dir = -1
+    final[start] = 1
+    for i in range(start, frame_num):
+        if hit[i] == -dir:
+            final[i] = 1
+            dir *= -1
+
+    return final, start, end
+    # while i < frame_num-interval:
+    #
+    #     i += 1
+
+def add_text_to_frame(frame, text, position= (10, 100), color=(0, 0, 255), thickness=8, font_scale=4):
+    # 在左上角添加文本
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    frame_with_text = cv2.putText(frame, text, position, font, font_scale, color, thickness)
+    return frame_with_text
+
+# def add_text_to_video(input_video_path, output_video_path, hit, start, start_frame, end_frame):
+def add_text_to_video(input_video_path, output_video_path, hit, start, end, speed, xy,vis=0):
+    video = cv2.VideoCapture(input_video_path)
+    fps = int(video.get(cv2.CAP_PROP_FPS))
+    output_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    output_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    output_video = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width, output_height))
+    currentFrame = 0
+    while(True):
+        ret, img = video.read()
+        # if there dont have any frame in video, break
+        if not ret:
+            break
+        img = add_text_to_frame(img, "Speed: {:.2f}".format(speed[currentFrame//10*10]), position=(1000, 25), color=(0, 255, 255), thickness=2, font_scale=1)
+        if start <= currentFrame <= start+10:
+            img = add_text_to_frame(img, "Start", position=(800, 100), color=(0, 255, 0), font_scale=2)
+        if end <= currentFrame <= end+10:
+            img = add_text_to_frame(img, "End", position=(800, 100), color=(0, 255, 0), font_scale=2)
+        tmp = max(0, currentFrame-6)
+        if 1 in hit[tmp: currentFrame] :
+            hit_frame = tmp+np.where(hit[tmp: currentFrame]==1)[0][0]
+            img = add_text_to_frame(img, f"Hit:({int(xy[hit_frame][0])},{int(xy[hit_frame][1])})", position=(800, 150), font_scale=1.5)
+        if vis:
+            save_np_image(img=img, img_folder=os.path.dirname(output_video_path) + '/hit', img_name="{:06d}.png".format(currentFrame))
+        # img = add_text_to_frame(img, f"Speed: {speed[currentFrame//10*10]}", position=(200, 100), color=(0, 0, 255), thickness=4)
+        output_video.write(img)
+
+        currentFrame += 1
+
+    video.release()
+    output_video.release()
