@@ -13,7 +13,24 @@ from tensorboardX import SummaryWriter
 from utils.train_utils import get_log_dir, train_summaries, eval_summaries
 import logging
 
+bce_loss = nn.BCELoss(size_average=True)
 
+def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
+
+    loss0 = bce_loss(d0, labels_v)
+    loss1 = bce_loss(d1, labels_v)
+    loss2 = bce_loss(d2, labels_v)
+    loss3 = bce_loss(d3, labels_v)
+    loss4 = bce_loss(d4, labels_v)
+    loss5 = bce_loss(d5, labels_v)
+    loss6 = bce_loss(d6, labels_v)
+
+    loss = loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
+    # print("l0: %3f, l1: %3f, l2: %3f, l3: %3f, l4: %3f, l5: %3f, l6: %3f\n" % (
+    # loss0.data.item(), loss1.data.item(), loss2.data.item(), loss3.data.item(), loss4.data.item(),
+    # loss5.data.item(), loss6.data.item()))
+
+    return loss0, loss
 # --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
 # --save_weights_path=weights/model --training_images_name="training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
 #parse parameters
@@ -46,7 +63,7 @@ eval_freq = 1
 device = 'cuda'
 
 
-log_dir = get_log_dir(exp_name='hm')
+log_dir = get_log_dir(exp_name='uiu')
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(filename=log_dir+'/my.log', level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
@@ -58,12 +75,15 @@ eval_dt = TennisDataset(images_path='eval.csv', n_classes=n_classes, input_heigh
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width)
 
-data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
+data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=0)
 eval_data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=0)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=0)
-net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
+# net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
+import torch
+from Models.uiunet import UIUNET
+net = UIUNET(9, 1).to(device)
 # optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 # optimizer 1 lr0.01 adam
 # optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
@@ -90,8 +110,9 @@ criterion = nn.BCELoss(size_average=True)
 # for epoch in range(epochs):
 #     input = input.to(device)
 #     label = label.to(device)
-#     pred = net(input)
-#     loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+#     d0, d1, d2, d3, d4, d5, d6 = net(input)
+#     pred = d0
+#     loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, label.reshape(label.shape[0], 1, input_height, input_width))
 #     # pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
 #     print(f'{epoch}/{epochs}', loss)
 #     optimizer.zero_grad()
@@ -107,7 +128,7 @@ criterion = nn.BCELoss(size_average=True)
 #     vis = {'vis_input': vis_input,
 #               'vis_pred': vis_pred,
 #               'vis_output': vis_output}
-#     train_summaries(vis, epoch=epoch, step=0)
+#     train_summaries(vis, epoch=epoch, step=0, log_dir=log_dir)
 
 # #---------------------------------------------------------------------
 # # train
@@ -125,8 +146,10 @@ for epoch in range(epochs):
         input, label, vis_output = batch
         input = input.to(device)
         label = label.to(device)
-        pred = net(input)
-        loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+        d0, d1, d2, d3, d4, d5, d6 = net(input)
+        pred = d0
+        # loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+        loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, label.reshape(label.shape[0], 1, input_height, input_width))
         # loss = criterion(pred, label.float())
         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
         optimizer.zero_grad()
@@ -147,6 +170,7 @@ for epoch in range(epochs):
 
 
     if epoch % eval_freq == 0:
+        net.eval()
         eval_pbar = tqdm(eval_data_loader,
                     total=len(eval_data_loader))
         all_loss = 0
@@ -155,8 +179,9 @@ for epoch in range(epochs):
             input = input.to(device)
             label = label.to(device)
             with torch.no_grad():
-                pred = net(input)
-            loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
+                d1, d2, d3, d4, d5, d6, d7 = net(input)
+                pred = d1[:, :, :, :]
+            loss = bce_loss(pred, label.reshape(label.shape[0], 1, input_height, input_width))
             all_loss += loss.item()
             if step % eval_log_frep == 0:
                 vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
