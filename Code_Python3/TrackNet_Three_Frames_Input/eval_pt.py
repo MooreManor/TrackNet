@@ -10,14 +10,15 @@ import cv2
 from torchvision.utils import make_grid
 import torch.nn as nn
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 # --save_weights_path=weights/model --training_images_name="eval.csv" --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
 # --save_weights_path=weights/model --training_images_name="eval.csv" --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
 #parse parameters
 parser = argparse.ArgumentParser()
-parser.add_argument("--save_weights_path", type = str  )
-parser.add_argument("--training_images_name", type = str  )
+parser.add_argument("--save_weights_path", type = str)
+parser.add_argument("--training_images_name", type = str)
 parser.add_argument("--n_classes", type=int )
 parser.add_argument("--input_height", type=int , default = 360  )
 parser.add_argument("--input_width", type=int , default = 640 )
@@ -47,39 +48,54 @@ eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, i
                           output_height=input_height, output_width=input_width, train=False)
 
 net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
+# from Models.uiunet import UIUNET
+# net = UIUNET(9, 1).to(device)
+net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
 # data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
 data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, num_workers=0)
 
 pbar = tqdm(data_loader,
                 # total=len(data_loader),
-                total=len(data_loader) if step_per_epochs > len(data_loader) else step_per_epochs)
+                total=len(data_loader))
 
 TP = 0
 TN = 0
 FP = 0
 FN = 0
 ALL_HAS = 0
+net.eval()
 for step, batch in enumerate(pbar):
     input, label, vis_output = batch
+    # plt.imshow(input[1][0:3].permute(1, 2, 0).numpy().astype(np.uint8)[:, :, ::-1])
+    # plt.show()
     input = input.to(device)
     with torch.no_grad():
         pred = net(input)
     pred = pred.reshape((train_batch_size, input_height, input_width))
     # pr = np.array([cv2.resize(img, (output_width, output_height)) for img in pr])
-    heatmap = pred.cpu().numpy().astype(np.uint8)
+    heatmap = (pred*255).cpu().numpy().astype(np.uint8)
+    # plt.imshow(heatmap[0])
+    # plt.show()
     heatmap = np.array([cv2.resize(img, (output_width, output_height)) for img in heatmap])
     # heatmap = np.array([cv2.resize(img, (output_width, output_height)) for img in heatmap])
     # cv2.resize(pr, (output_width, output_height))
-    heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
+    # heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
+    # plt.imshow(heatmap[1])
+    # plt.show()
+    pass
+    heatmap = [cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
     pred_has_circle = [np.max(img) > 0 for img in heatmap]
     pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1,minDist=10,param2=2,minRadius=2,maxRadius=7) for img in heatmap]
 
     outputs = (label*255).reshape((train_batch_size, output_height, output_width))
+    # plt.imshow(outputs[1].cpu().numpy().astype(np.uint8))
+    # plt.show()
     # outputs = outputs.reshape((train_batch_size, height, width, n_classes)).argmax(axis=3)
     # outputs = cv2.threshold(outputs, 127, 255, cv2.THRESH_BINARY)
     outputs = outputs.numpy().astype(np.uint8)
     # outputs = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in outputs]
     gt_has_circle = [np.max(img)>0 for img in outputs]
+    # gt_circles = np.array([np.where(img==np.max(img)) if np.max(img)>0 else False for img in outputs]).squeeze()
     gt_circles = np.array([np.where(img==np.max(img)) for img in outputs]).squeeze()
     for j in range(train_batch_size):
         tmp_hp = pred_has_circle[j]
@@ -92,19 +108,29 @@ for step, batch in enumerate(pbar):
             else:
                 FN += 1
             continue
+        if tmp_hg==0:
+            if tmp_hp==0:
+                TN += 1
+            else:
+                FN += 1
+            continue
         tmp_pred = pred_circles[j][0][0][:2]
-        tmp_gt = gt_circles[j][0][0][:2]
+        tmp_gt = gt_circles[j][2::-1]
 
         # if tmp_hp==tmp_hg and tmp_hg==1:
         if tmp_hp==1:
             delta_circle = abs(tmp_pred - tmp_gt)
-            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 100 and tmp_hp==tmp_hg:
+            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 200 and tmp_hp==tmp_hg:
                 TP += 1
             else:
                 FP += 1
 
-
-
+    print("TP:", TP)
+    print("FP:", FP)
+    print("ALL_HAS:", ALL_HAS)
+    print("Precision:", TP/(TP+FP))
+    print("Recall:", TP/ALL_HAS)
+    print('----------------------------------------------------------------')
 
 
 
