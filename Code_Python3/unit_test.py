@@ -42,25 +42,52 @@ import numpy as np
 
 
 # 读取csv文件
-with open('./TrackNet_Three_Frames_Input/tennis.csv', newline='') as csvfile:
+with open('./TrackNet_Three_Frames_Input/gt.csv', newline='', encoding='gbk') as csvfile:
     reader = csv.reader(csvfile)
     next(reader) # 跳过第一行
     data = []
     for row in reader:
-        if row[1]=='None':
-            x, y = None, None
+        if len(row)==1:
+            continue
         else:
             x, y = float(row[1]), float(row[2])
-        data.append([x, y])
+            bounce = int(row[4])
+        data.append([x, y, bounce])
 
-start_frame=8
-end_frame=len(data)
 # 将数据转换为numpy数组
 data = np.array(data)
-vols = calculate_velocity(data)
-y_vol = vols[:, 1]
-hit, start = jud_dir(y_vol)
-add_text_to_video('./TrackNet_Three_Frames_Input/168113494209423_TrackNet.mp4', './TrackNet_Three_Frames_Input/hit.mp4', hit, start)
+velocities = []
+velocities.append((0, 0))
+for i in range(1, data.shape[0]):
+    velocities.append((data[i][0]-data[i-1][0], data[i][1]-data[i-1][1]))
+
+velocities = np.array(velocities)
+sum_velo = pow(pow(velocities[:, 0], 2)+pow(velocities[:, 1], 2), 0.5)
+
+acceleration = []
+acceleration.append((0, 0))
+for i in range(1, len(velocities)):
+    acc = (velocities[i] - velocities[i-1])
+    acceleration.append(acc)
+acceleration = np.array(acceleration)
+sum_accel = pow(pow(acceleration[:, 0], 2)+pow(acceleration[:, 1], 2), 0.5)
+from matplotlib import pyplot as plt
+# 绘制曲线图
+# plt.plot(acceleration[:, 1], color='black')
+plt.plot(data[:, 1], color='black')
+
+bounce = data[:, 2].astype(np.int)
+bounce = np.array(np.where(bounce==1))
+# 在指定帧上绘制黑点
+# plt.scatter(bounce[0], acceleration[bounce][0][:, 1], color='red')
+plt.scatter(bounce[0], data[bounce][0][:, 1], color='red')
+
+# 设置x轴和y轴标签
+plt.xlabel('frame')
+plt.ylabel('y pos')
+
+# 显示图形
+plt.show()
 
 
 
