@@ -18,8 +18,8 @@ import Models
 # tracknet-mine Precision: 0.3048341989612465 Recall: 0.15028560173330707
 # tracknet-ori Precision: 0.21198910081743869 Recall: 0.15324010242269057
 
-# --save_weights_path=weights/model --training_images_name="eval.csv" --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
-# --save_weights_path=weights/model --training_images_name="eval.csv" --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
+# --save_weights_path=weights/model --training_images_name="data/csv/eval.csv" --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
+# --save_weights_path=weights/model --training_images_name="data/csv/eval.csv" --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
 #parse parameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_weights_path", type = str)

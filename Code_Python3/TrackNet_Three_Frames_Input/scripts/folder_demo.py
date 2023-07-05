@@ -10,7 +10,8 @@ import os
 import subprocess
 
 # --save_weights_path=weights/model.3 --input_video_path="test.mp4" --output_video_path="test_TrackNet.mp4" --n_classes=256
-# --save_weights_path=weights/model.3 --input_video_path="play.mp4" --output_video_path="play_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/
+# model.3 --input_video_path="play.mp4" --output_video_path="play_TrackNet.mp4" --n_classes=256
 video_input_folder = 'VideoInput'
 video_output_folder = 'VideoOutput'
 video_files = glob.glob(os.path.join(video_input_folder, "*.mp4"))

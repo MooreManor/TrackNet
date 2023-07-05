@@ -7,3 +7,4 @@
 weights/
 *.pkl
 logs/
+data/

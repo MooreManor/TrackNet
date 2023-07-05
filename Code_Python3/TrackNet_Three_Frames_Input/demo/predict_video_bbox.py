@@ -1,5 +1,7 @@
 import argparse
+import sys
 import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import Models
 import queue
@@ -23,7 +25,7 @@ class KalmanFilter:
         return predicted
 
 kfObj = KalmanFilter()
-# --save_weights_path=weights/model.3 --input_video_path="test.mp4" --n_classes=256
+# --save_weights_path=weights/model.3 --input_video_path="VideoInput/dataset.mp4" --n_classes=256
 # --save_weights_path=weights/model.3 --input_video_path="play.mp4" --n_classes=256
 # --save_weights_path=weights/model.3 --input_video_path="VideoInput/167979954199057.mp4" --n_classes=256
 # --save_weights_path=weights/model.3 --input_video_path="output3.mp4" --n_classes=256
