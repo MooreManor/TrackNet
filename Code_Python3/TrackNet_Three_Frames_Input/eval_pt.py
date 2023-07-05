@@ -11,7 +11,12 @@ from torchvision.utils import make_grid
 import torch.nn as nn
 import numpy as np
 from matplotlib import pyplot as plt
+import Models
 
+# basic thr10 Precision: 0.13050570962479607 Recall: 0.07878668505022651
+# uiu thr10 Precision: 0.2770244091437427 Recall: 0.14083119952727988
+# tracknet-mine Precision: 0.3048341989612465 Recall: 0.15028560173330707
+# tracknet-ori Precision: 0.21198910081743869 Recall: 0.15324010242269057
 
 # --save_weights_path=weights/model --training_images_name="eval.csv" --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
 # --save_weights_path=weights/model --training_images_name="eval.csv" --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
@@ -47,12 +52,19 @@ eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, i
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width, train=False)
 
-net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
-# from Models.uiunet import UIUNET
-# net = UIUNET(9, 1).to(device)
-net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
+# net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
+# net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
+from Models.uiunet import UIUNET
+net = UIUNET(9, 1).to(device)
+net.load_state_dict(torch.load('./weights/model.pt.uiu'), strict=True)
+
+# modelTN = Models.TrackNet.TrackNet
+# net = modelTN(n_classes, input_height=input_height, input_width=input_width)
+# net.compile(loss='categorical_crossentropy', optimizer='adadelta' , metrics=['accuracy'])
+# net.load_weights('./weights/model.0.1.pt')
+
 # data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
-data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, num_workers=0)
+data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
 
 pbar = tqdm(data_loader,
                 # total=len(data_loader),
@@ -63,17 +75,22 @@ TN = 0
 FP = 0
 FN = 0
 ALL_HAS = 0
-net.eval()
+# net.eval()
 for step, batch in enumerate(pbar):
     input, label, vis_output = batch
     # plt.imshow(input[1][0:3].permute(1, 2, 0).numpy().astype(np.uint8)[:, :, ::-1])
     # plt.show()
     input = input.to(device)
+    # pred = net.predict(input.numpy())
     with torch.no_grad():
-        pred = net(input)
+        # pred = net(input)
+        d1, d2, d3, d4, d5, d6, d7 = net(input)
+        pred = d1[:, :, :, :]
     pred = pred.reshape((train_batch_size, input_height, input_width))
+    # pred = pred.reshape((train_batch_size, input_height, input_width, n_classes)).argmax(axis=3)
     # pr = np.array([cv2.resize(img, (output_width, output_height)) for img in pr])
     heatmap = (pred*255).cpu().numpy().astype(np.uint8)
+    # heatmap = pred.astype(np.uint8)
     # plt.imshow(heatmap[0])
     # plt.show()
     heatmap = np.array([cv2.resize(img, (output_width, output_height)) for img in heatmap])
@@ -82,8 +99,7 @@ for step, batch in enumerate(pbar):
     # heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
     # plt.imshow(heatmap[1])
     # plt.show()
-    pass
-    heatmap = [cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
+    heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
     pred_has_circle = [np.max(img) > 0 for img in heatmap]
     pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1,minDist=10,param2=2,minRadius=2,maxRadius=7) for img in heatmap]
 
