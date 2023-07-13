@@ -55,7 +55,7 @@ def getOutputArr( path , nClasses ,  width , height, resize=1):
 		img = img.astype(np.float32)
 
 		# for c in range(nClasses):
-		# 	seg_labels[: , : , c ] = (img == c ).astype(int)
+		# 	seg_labels[: , : , c ] = (img == c ).astype(int)z
 
 	except Exception as e:
 		print(e)
@@ -98,7 +98,7 @@ import torch
 from torch.utils.data import Dataset
 
 class TennisDataset(Dataset):
-	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width, train=True, num_images=0):
+	def __init__(self, images_path,  n_classes , input_height , input_width , output_height , output_width, train=True, num_images=0, rt_ori=False):
 		self.images_path = images_path
 		self.n_classes = n_classes
 		self.input_height = input_height
@@ -107,6 +107,7 @@ class TennisDataset(Dataset):
 		self.output_width = output_width
 		self.train = train
 		self.resize = train
+		self.rt_ori = rt_ori
 		# read csv file to 'zipped'
 		columns = defaultdict(list)
 		with open(images_path) as f:
@@ -131,4 +132,10 @@ class TennisDataset(Dataset):
 		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height, self.resize)
 		gt_ht = cv2.imread(anno, 1)
 		gt_ht = cv2.resize(gt_ht, (self.input_width, self.input_height))
+		if self.rt_ori:
+			img = cv2.imread(path, 1)
+			img1 = cv2.imread(path1, 1)
+			img2 = cv2.imread(path2, 1)
+			imgs = np.concatenate((img, img1, img2), axis=2)
+			return np.array(input), np.array(output), np.array(gt_ht), np.array(imgs)
 		return np.array(input), np.array(output), np.array(gt_ht)

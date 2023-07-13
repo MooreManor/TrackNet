@@ -50,6 +50,8 @@ for index in dirs:
     vid_name = os.path.basename(index)
     output_pics_path = gt_path + '/' + vid_name
     label_path = csv_path + f"/{vid_name}.csv"
+    if not os.path.exists(label_path):
+        continue
     ####################################################################################
 
     # check if the path need to be create

@@ -19,6 +19,8 @@ with open(training_file_name, 'w') as file:
     # for g in range(1, 9):
     for dir in dirs:
         annos_path = gt_path + f'/{os.path.basename(dir)}'
+        if not os.path.exists(annos_path):
+            continue
         images = glob.glob(dir + '/**/*.jpg', recursive=True) + glob.glob(dir + '/**/*.png', recursive=True) + glob.glob(
             dir + '/**/*.jpeg', recursive=True)
         images.sort()

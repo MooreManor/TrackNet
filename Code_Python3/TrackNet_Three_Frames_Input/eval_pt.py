@@ -12,6 +12,8 @@ import torch.nn as nn
 import numpy as np
 from matplotlib import pyplot as plt
 import Models
+from utils.train_utils import get_log_dir, train_summaries, eval_summaries
+from utils.kp_utils import get_heatmap_preds
 
 # basic thr10 Precision: 0.13050570962479607 Recall: 0.07878668505022651
 # uiu thr10 Precision: 0.2770244091437427 Recall: 0.14083119952727988
@@ -50,13 +52,13 @@ device = 'cuda'
 
 eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
                           # output_height=input_height, output_width=input_width, num_images=64)
-                          output_height=input_height, output_width=input_width, train=False)
+                          output_height=input_height, output_width=input_width, train=False, rt_ori=True)
 
 # net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
 # net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
 from Models.uiunet import UIUNET
 net = UIUNET(9, 1).to(device)
-net.load_state_dict(torch.load('./weights/model.pt.uiu'), strict=True)
+net.load_state_dict(torch.load('./weights/model.pt.uiu.latest'), strict=True)
 
 # modelTN = Models.TrackNet.TrackNet
 # net = modelTN(n_classes, input_height=input_height, input_width=input_width)
@@ -69,15 +71,28 @@ data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, nu
 pbar = tqdm(data_loader,
                 # total=len(data_loader),
                 total=len(data_loader))
+eval_log_frep = 1
 
 TP = 0
 TN = 0
 FP = 0
 FN = 0
 ALL_HAS = 0
-# net.eval()
+net.eval()
 for step, batch in enumerate(pbar):
-    input, label, vis_output = batch
+    input, label, vis_output, rt_ori = batch
+    rt_ori = rt_ori.numpy()
+    ori_img = rt_ori[:, :, :, 0:3]
+    ori_img1 = rt_ori[:, :, :, 3:6]
+    gray = [cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) for img in ori_img]
+    gray2 = [cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) for img in ori_img1]
+    # gray = cv2.cvtColor(ori_img, cv2.COLOR_BGR2GRAY)
+    # gray2 = cv2.cvtColor(ori_img1, cv2.COLOR_BGR2GRAY)
+    # diff = cv2.absdiff(gray, gray2)
+    diff = [cv2.absdiff(img1, img2) for img1, img2 in zip(gray, gray2)]
+    # ret, diff = cv2.threshold(diff, 10, 255, cv2.THRESH_BINARY)
+    diff = [cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)[1] for img in diff]
+    diff = np.array(diff)
     # plt.imshow(input[1][0:3].permute(1, 2, 0).numpy().astype(np.uint8)[:, :, ::-1])
     # plt.show()
     input = input.to(device)
@@ -99,9 +114,16 @@ for step, batch in enumerate(pbar):
     # heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
     # plt.imshow(heatmap[1])
     # plt.show()
-    heatmap = [cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
+    #------------------------------
+    # get max as pred 2d
+    heatmap = heatmap * (diff/255)
+    pred_circles, conf = get_heatmap_preds(torch.from_numpy(heatmap))
+    pred_circles = pred_circles.numpy()
+    #
+    # heatmap = [cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
     pred_has_circle = [np.max(img) > 0 for img in heatmap]
-    pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1,minDist=10,param2=2,minRadius=2,maxRadius=7) for img in heatmap]
+    # pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1,minDist=10,param2=2,minRadius=2,maxRadius=7) for img in heatmap]
+    # ------------------------------
 
     outputs = (label*255).reshape((train_batch_size, output_height, output_width))
     # plt.imshow(outputs[1].cpu().numpy().astype(np.uint8))
@@ -118,7 +140,8 @@ for step, batch in enumerate(pbar):
         tmp_hg = gt_has_circle[j]
         if tmp_hg==1:
             ALL_HAS += 1
-        if pred_circles[j] is None:
+        # if pred_circles[j] is None:
+        if pred_has_circle[j] == False:
             if tmp_hg==0:
                 TN += 1
             else:
@@ -130,7 +153,8 @@ for step, batch in enumerate(pbar):
             else:
                 FN += 1
             continue
-        tmp_pred = pred_circles[j][0][0][:2]
+        # tmp_pred = pred_circles[j][0][0][:2]
+        tmp_pred = pred_circles[j][:2]
         tmp_gt = gt_circles[j][2::-1]
 
         # if tmp_hp==tmp_hg and tmp_hg==1:
@@ -140,6 +164,16 @@ for step, batch in enumerate(pbar):
                 TP += 1
             else:
                 FP += 1
+
+    if step % eval_log_frep == 0:
+        vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
+        vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1) * 255.
+        vis_pred = vis_pred.repeat(1, 1, 1, 3).cpu().detach().numpy().astype(np.uint8)
+        vis_output = np.array(vis_output).astype(np.uint8)
+        vis = {'vis_input': vis_input,
+               'vis_pred': vis_pred,
+               'vis_output': vis_output}
+        eval_summaries(vis, epoch=0, step=step, log_dir='logs/eval/uiu_400')
 
     print("TP:", TP)
     print("FP:", FP)
