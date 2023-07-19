@@ -122,7 +122,8 @@ def add_csv_col(folder, new_col_name, data=None, file_name='tennis_loc.csv'):
 def calculate_velocity(positions):
     velocities = []
     # accelerations = []
-    velocities.append((None, None))
+    # velocities.append((None, None))
+    velocities.append((0, 0))
     # accelerations.append(-1, -1)
     # accelerations.append(-1, -1)
     for i in range(1, len(positions)):
@@ -130,29 +131,33 @@ def calculate_velocity(positions):
         if positions[i][0]==None:
             velocities.append((None, None))
         else:
-            flag = 0
-            for j in range(i - 1, -1, -1):
-                # if positions[j][0] != None:
-                if positions[j][0] != None and positions[i][0] - positions[j][0]<50 and positions[i][1] - positions[j][1]<50:
-                    dx = positions[i][0] - positions[j][0]
-                    dy = positions[i][1] - positions[j][1]
-                    flag=1
-                    break
-            if flag==1:
-                dt = i-j
-                # 计算相邻两帧之间的2D速度
-                v = (dx / dt, dy / dt)
-                velocities.append(v)
-            else:
-                velocities.append((None, None))
+            # -------------------------------------------------
+            # # judge valid speed
+            # flag = 0
+            # for j in range(i - 1, -1, -1):
+            #     # if positions[j][0] != None:
+            #     if positions[j][0] != None and positions[i][0] - positions[j][0]<50 and positions[i][1] - positions[j][1]<50:
+            #         dx = positions[i][0] - positions[j][0]
+            #         dy = positions[i][1] - positions[j][1]
+            #         flag=1
+            #         break
+            # if flag==1:
+            #     dt = i-j
+            #     # 计算相邻两帧之间的2D速度
+            #     v = (dx / dt, dy / dt)
+            #     velocities.append(v)
+            # else:
+            #     velocities.append((None, None))
 
-        # dx = positions[i][0] - positions[i - 1][0]
-        # dy = positions[i][1] - positions[i - 1][1]
-        # dt = 1  # 假设每帧的时间间隔为1
-        #
-        # # 计算相邻两帧之间的2D速度
-        # v = (dx / dt, dy / dt)
-        # velocities.append(v)
+            # -------------------------------------------------
+
+            dx = positions[i][0] - positions[i - 1][0]
+            dy = positions[i][1] - positions[i - 1][1]
+            dt = 1  # 假设每帧的时间间隔为1
+
+            # 计算相邻两帧之间的2D速度
+            v = (dx / dt, dy / dt)
+            velocities.append(v)
 
         # if i > 1:
         #     # 计算相邻两帧之间的2D加速度
@@ -227,6 +232,48 @@ def jud_dir(y_vols, x_vols,interval=4):
             dir *= -1
 
     return final, start, end
+
+def jud_y_dir(y_vols, interval=4):
+    frame_num = y_vols.shape[0]
+    # i = 4
+    # hit = np.full((frame_num, 3), None)
+    hit = np.zeros(frame_num, dtype=int)
+    final = np.zeros(frame_num, dtype=int)
+
+    for i in range(4, frame_num - 3):
+        window = y_vols[i:i + 4]
+        signs = np.array([np.sign(win) for win in window if win is not None])
+        # abs_values = np.array([np.abs(win) for win in window if win is not None])
+        # big = np.all(abs_values > 10) and len(abs_values)>0
+        values = np.array([win for win in window if win is not None])
+        big1 = np.all(values > 3) and len(values)>0 # 对面的
+        big2 = np.all(values < -10) and len(values)>0
+        big = big1+big2
+        if np.all(signs > 0):
+            hit[i] = 1  # 正符号
+        elif np.all(signs < 0):
+            hit[i] = -1  # 负符号
+        hit[i] *= big
+
+    index_1 = np.where(hit == 1)[0][0]
+    index_2 = np.where(hit == -1)[0][0]
+    # index_3 = [i for i, x in enumerate(hit) if x == 1 and (i == 0 or hit[i-1] != 1)][-1]
+    index_3 = find_start_of_hit(hit, 1)[-1]
+    index_4 = find_start_of_hit(hit, -1)[-1]
+    end = index_3 if index_3 > index_4 else index_4
+    if index_1 < index_2:
+        start = index_1
+        dir =1
+    else:
+        start = index_2
+        dir = -1
+    final[start] = 1
+    for i in range(start, frame_num):
+        if hit[i] == -dir:
+            final[i] = 1
+            dir *= -1
+
+    return final, start, end
     # while i < frame_num-interval:
     #
     #     i += 1
@@ -269,3 +316,35 @@ def add_text_to_video(input_video_path, output_video_path, hit, start, end, spee
 
     video.release()
     output_video.release()
+
+def nan_helper(y):
+    """Helper to handle indices and logical indices of NaNs.
+
+    Input:
+        - y, 1d numpy array with possible NaNs
+    Output:
+        - nans, logical indices of NaNs
+        - index, a function, with signature indices= index(logical_indices),
+          to convert logical indices of NaNs to 'equivalent' indices
+    Example:
+        >>> # linear interpolation of NaNs
+        >>> nans, x= nan_helper(y)
+        >>> y[nans]= np.interp(x(nans), x(~nans), y[~nans])
+    """
+    return np.isnan(y), lambda z: z.nonzero()[0]
+
+def interpolation(coords):
+  coords =coords.copy()
+  x, y = [x[0] if x[0] is not None else np.nan for x in coords], [x[1] if x[1] is not None else np.nan for x in coords]
+
+  xxx = np.array(x) # x coords
+  yyy = np.array(y) # y coords
+
+  nons, yy = nan_helper(xxx)
+  xxx[nons]= np.interp(yy(nons), yy(~nons), xxx[~nons])
+  nans, xx = nan_helper(yyy)
+  yyy[nans]= np.interp(xx(nans), xx(~nans), yyy[~nans])
+
+  newCoords = [*zip(xxx,yyy)]
+
+  return newCoords
