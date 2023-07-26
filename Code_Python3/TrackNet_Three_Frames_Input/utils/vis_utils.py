@@ -8,7 +8,24 @@ import glob
 import cv2
 from PIL import Image, ImageDraw
 from matplotlib import pyplot as plt
-from utils import add_text_to_frame
+from utils.utils import add_text_to_frame
+
+def plot_wave_scat(wave_data, scat_data, ylabel='y', xlabel='frame', title='title'):
+    plt.plot(wave_data, color='black')
+    plt.title(title)
+
+    scat_data = scat_data.astype(np.int)
+    scat_ind = np.array(np.where(scat_data == 1))
+    # 在指定帧上绘制黑点
+    # plt.scatter(bounce[0], acceleration[bounce][0][:, 1], color='red')
+    plt.scatter(scat_ind[0], wave_data[scat_ind], color='red')
+
+    # 设置x轴和y轴标签
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    # 显示图形
+    plt.show()
 
 # ----------------------------------------
 # eval file
@@ -49,7 +66,7 @@ from utils import add_text_to_frame
 #     for csv_file in csv_file_list:
 #         out = cv2.VideoWriter('../debug.mp4', fourcc, fps, (width, height))
 #         data = read_csv(csv_file)
-#         vid_name = osp.basename(csv_file)[:-4]
+#         vid_name = osp.basename(csv_ffrom matplotlib import pyplot as plt
 #         img_path = vid_path+vid_name+'/000/'
 #         for i, pos in enumerate(data):
 #             img_name = img_path+"{:06d}".format(i)+'.png'

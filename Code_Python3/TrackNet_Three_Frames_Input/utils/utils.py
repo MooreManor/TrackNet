@@ -239,9 +239,12 @@ def jud_y_dir(y_vols, interval=4):
     # hit = np.full((frame_num, 3), None)
     hit = np.zeros(frame_num, dtype=int)
     final = np.zeros(frame_num, dtype=int)
+    window_size = 4
 
-    for i in range(4, frame_num - 3):
-        window = y_vols[i:i + 4]
+    # for i in range(4, frame_num - 3):
+    for i in range(0, frame_num - window_size + 1):
+        # window = y_vols[i:i + 4]
+        window = y_vols[i:i + window_size]
         signs = np.array([np.sign(win) for win in window if win is not None])
         # abs_values = np.array([np.abs(win) for win in window if win is not None])
         # big = np.all(abs_values > 10) and len(abs_values)>0
@@ -304,7 +307,7 @@ def add_text_to_video(input_video_path, output_video_path, hit, start, end, spee
         if end <= currentFrame <= end+10:
             img = add_text_to_frame(img, "End", position=(800, 100), color=(0, 255, 0), font_scale=2)
         tmp = max(0, currentFrame-6)
-        if 1 in hit[tmp: currentFrame] :
+        if 1 in hit[tmp: currentFrame]:
             hit_frame = tmp+np.where(hit[tmp: currentFrame]==1)[0][0]
             img = add_text_to_frame(img, f"Hit:({int(xy[hit_frame][0])},{int(xy[hit_frame][1])})", position=(800, 150), font_scale=1.5)
         if vis:
