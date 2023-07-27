@@ -1,106 +1,95 @@
-# from TrackNet_Three_Frames_Input.LoadBatches import TennisDataset
-# from torch.utils.data import DataLoader
-# from tqdm import tqdm
-# import torch
-# from TrackNet_Three_Frames_Input.Models.TrackNet import TrackNet_pt
-# device = 'cuda'
-# def pt_categorical_crossentropy(pred, label):
-#     """
-#     使用pytorch 来实现 categorical_crossentropy
-#     """
-#     # print(-label * torch.log(pred))
-#     return torch.sum(-label * torch.log(pred))
-#
-# #
-# tennis_dt = TennisDataset(images_path="TrackNet_Three_Frames_Input/training_model3_mine.csv", n_classes=256, input_height=360, input_width=640,
-#                           output_height=360, output_width=640)
-#
-# data_loader = DataLoader(tennis_dt, batch_size=2, shuffle=False, num_workers=0)
-# net = TrackNet_pt(n_classes=256, input_height=360, input_width=640).to(device)
-# optimizer = torch.optim.Adam(net.parameters(), lr=1.0)
-#
-# pbar = tqdm(data_loader,
-#                  total=len(data_loader),
-#                  desc='Train',)
-# epochs = 100
-# for epoch in range(epochs):
-#     for step, batch in enumerate(pbar):
-#         # pbar.set_description(f"No.{step}")
-#         input, label = batch
-#         input = input.to(device)
-#         label = label.to(device)
-#         pred = net(input)
-#         loss = pt_categorical_crossentropy(pred, label)
-#         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
-#         loss.backward()
-#         optimizer.step()
-
-
-from utils.utils import calculate_velocity, add_csv_col, jud_dir, add_text_to_video
-import csv
 import numpy as np
-from utils.vis_utils import plot_wave_scat
+# import seaborn as sns
+from sklearn.model_selection import GridSearchCV
+
+from sktime.classification.deep_learning.cnn import CNNClassifier
+from sktime.datasets import load_basic_motions
+from sklearn.metrics import accuracy_score
+
+motions_X, motions_Y = load_basic_motions(return_type="numpy3d")
+motions_train_X, motions_train_y = load_basic_motions(
+    split="train", return_type="numpy3d"
+)
+motions_test_X, motions_test_y = load_basic_motions(split="test", return_type="numpy3d")
 
 
-# 读取csv文件
-with open('./TrackNet_Three_Frames_Input/gt.csv', newline='', encoding='gbk') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader) # 跳过第一行
-    data = []
-    for row in reader:
-        if len(row)==1:
-            continue
-        else:
-            x, y = float(row[1]), float(row[2])
-            bounce = int(row[4])
-            hit = int(row[3])
-        data.append([x, y, bounce, hit])
+from sktime.classification.kernel_based import RocketClassifier
 
-# 将数据转换为numpy数组
-data = np.array(data)
-velocities = []
-velocities.append((0, 0))
-for i in range(1, data.shape[0]):
-    velocities.append((data[i][0]-data[i-1][0], data[i][1]-data[i-1][1]))
+rocket = RocketClassifier(num_kernels=2000)
+rocket.fit(motions_train_X, motions_train_y)
+y_pred = rocket.predict(motions_test_X)
 
-velocities = np.array(velocities)
-sum_velo = pow(pow(velocities[:, 0], 2)+pow(velocities[:, 1], 2), 0.5)
+accuracy_score(motions_test_y, y_pred)
 
-acceleration = []
-acceleration.append((0, 0))
-for i in range(1, len(velocities)):
-    acc = (velocities[i] - velocities[i-1])
-    acceleration.append(acc)
-acceleration = np.array(acceleration)
-sum_accel = pow(pow(acceleration[:, 0], 2)+pow(acceleration[:, 1], 2), 0.5)
-bounce = data[:, 2].astype(np.int)
-hit = data[:, 3].astype(np.int)
-plot_wave_scat(velocities[:, 0], hit, ylabel='x vol', title='relation between vol and hit')
-plot_wave_scat(velocities[:, 1], hit, ylabel='y vol', title='relation between vol and hit')
-plot_wave_scat(data[:, 0], hit, ylabel='x pos', title='relation between pos and hit')
-plot_wave_scat(data[:, 1], hit, ylabel='y pos', title='relation between pos and hit')
-plot_wave_scat(acceleration[:, 0], hit, ylabel='x accel', title='relation between accel and hit')
-plot_wave_scat(acceleration[:, 1], hit, ylabel='y accel', title='relation between accel and hit')
-plot_wave_scat(sum_velo, hit, ylabel='vol', title='relation between vol and hit')
-plot_wave_scat(sum_accel, hit, ylabel='accel', title='relation between accel and hit')
-# from matplotlib import pyplot as plt
-# # 绘制曲线图
-# # plt.plot(acceleration[:, 1], color='black')
-# plt.plot(data[:, 1], color='black')
+
+
+# # ## Multivariate Classification
+# #
+# # Many classifiers, including ROCKET and HC2, are configured to work with multivariate input. For example:
 #
-# bounce = data[:, 2].astype(np.int)
-# bounce = np.array(np.where(bounce==1))
-# # 在指定帧上绘制黑点
-# # plt.scatter(bounce[0], acceleration[bounce][0][:, 1], color='red')
-# plt.scatter(bounce[0], data[bounce][0][:, 1], color='red')
+# # In[ ]:
 #
-# # 设置x轴和y轴标签
-# plt.xlabel('frame')
-# plt.ylabel('y pos')
 #
-# # 显示图形
-# plt.show()
-
-
+# from sktime.classification.kernel_based import RocketClassifier
+#
+# rocket = RocketClassifier(num_kernels=2000)
+# rocket.fit(motions_train_X, motions_train_y)
+# y_pred = rocket.predict(motions_test_X)
+#
+# accuracy_score(motions_test_y, y_pred)
+#
+#
+# # In[ ]:
+#
+#
+# from sktime.classification.hybrid import HIVECOTEV2
+#
+# HIVECOTEV2(time_limit_in_minutes=0.2)
+# hc2.fit(motions_train_X, motions_train_y)
+# y_pred = hc2.predict(motions_test_X)
+#
+# accuracy_score(motions_test_y, y_pred)
+#
+#
+# # `sktime` offers two other ways of building estimators for multivariate time series problems:
+# #
+# # 1. Concatenation of time series columns into a single long time series column via `ColumnConcatenator` and apply a classifier to the concatenated data,
+# # 2. Dimension ensembling via `ColumnEnsembleClassifier` in which one classifier is fitted for each time series column/dimension of the time series and their predictions are combined through a voting scheme.
+# #
+# # We can concatenate multivariate time series/panel data into long univariate time series/panel using a transform and then apply a classifier to the univariate data:
+#
+# # In[ ]:
+#
+#
+# from sktime.classification.interval_based import DrCIF
+# from sktime.transformations.panel.compose import ColumnConcatenator
+#
+# clf = ColumnConcatenator() * DrCIF(n_estimators=10, n_intervals=5)
+# clf.fit(motions_train_X, motions_train_y)
+# y_pred = clf.predict(motions_test_X)
+#
+# accuracy_score(motions_test_y, y_pred)
+#
+#
+# # We can also fit one classifier for each time series column and then aggregate their predictions. The interface is similar to the familiar `ColumnTransformer` from `sklearn`.
+#
+# # In[ ]:
+#
+#
+# from sktime.classification.compose import ColumnEnsembleClassifier
+# from sktime.classification.interval_based import DrCIF
+# from sktime.classification.kernel_based import RocketClassifier
+#
+# col = ColumnEnsembleClassifier(
+#     estimators=[
+#         ("DrCIF0", DrCIF(n_estimators=10, n_intervals=5), [0]),
+#         ("ROCKET3", RocketClassifier(num_kernels=1000), [3]),
+#     ]
+# )
+#
+# col.fit(motions_train_X, motions_train_y)
+# y_pred = col.predict(motions_test_X)
+#
+# accuracy_score(motions_test_y, y_pred)
 
 
