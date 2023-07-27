@@ -69,8 +69,8 @@ from sktime.classification.compose import ColumnEnsembleClassifier
 from sktime.transformations.panel.compose import ColumnConcatenator
 # clf = ColumnConcatenator() * DrCIF(n_estimators=10, n_intervals=5)
 # clf = HIVECOTEV2(time_limit_in_minutes=0.2)
-# clf = RocketClassifier(num_kernels=2000)
-clf = tree.DecisionTreeClassifier()
+clf = RocketClassifier(num_kernels=2000)
+# clf = tree.DecisionTreeClassifier()
 # clf = ColumnEnsembleClassifier(
 #     estimators=[
 #         ("DrCIF0", DrCIF(n_estimators=10, n_intervals=5), [0]),
@@ -80,8 +80,9 @@ clf = tree.DecisionTreeClassifier()
 X = X.values
 len_X = len(X)
 X = np.stack([np.array(series.values) for series in X.reshape(-1)])
-X = X.reshape(len_X, 3, 20)
-X = X.reshape(len_X, 60)
+# X = X.reshape(len_X, 3, 20)
+X = X.reshape(len_X, 20, 3)
+# X = X.reshape(len_X, 60)
 clf.fit(X, Y)
 
 dir_path = '/datasetb/tennis/'
@@ -166,8 +167,9 @@ X_test = pd.concat([Xs, Ys, Vs], 1)
 len_XTest = X_test.shape[0]
 X_test = X_test.values
 X_test = np.stack([np.array(series.values) for series in X_test.reshape(-1)])
-X_test = X_test.reshape(len_XTest, 3, 20)
-X_test = X_test.reshape(len_XTest, 60)
+# X_test = X_test.reshape(len_XTest, 3, 20)
+X_test = X_test.reshape(len_XTest, 20, 3)
+# X_test = X_test.reshape(len_XTest, 60)
 y_pred = clf.predict(X_test)
 TP, ALL_HAS, FP, diff = classify_metrics(y_pred, bounce)
 # precision=precision_score(bounce, y_pred, average='macro')
