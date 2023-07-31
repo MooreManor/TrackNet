@@ -116,6 +116,13 @@ class TennisDataset(Dataset):
 			for row in reader:
 				for (i, v) in enumerate(row):
 					columns[i].append(v)
+		if self.train:
+			with open('data/csv/mine_train.csv') as f:
+				reader = csv.reader(f)
+				next(reader)
+				for row in reader:
+					for (i, v) in enumerate(row):
+						columns[i].append(v)
 		zipped = itertools.cycle(zip(columns[0], columns[1], columns[2], columns[3]))
 		self.data = [next(zipped) for i in range(len(columns[0]))]
 

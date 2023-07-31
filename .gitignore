@@ -8,3 +8,4 @@ weights/
 *.pkl
 logs/
 data/
+*.hdf5
