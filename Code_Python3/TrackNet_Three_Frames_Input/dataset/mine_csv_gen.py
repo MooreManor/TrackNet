@@ -7,12 +7,14 @@ import random
 import csv
 import os
 
-training_file_name = "eval.csv"
+# training_file_name = "eval.csv"
+training_file_name = "mine_train.csv"
 images_path = '/datasetb/tennis/haluo/imgs'
 # csv_path = '/datasetb/tennis/haluo/csv'
 gt_path = '/datasetb/tennis/haluo/GroundTruth'
 dirs = os.listdir(images_path)
-dirs = [images_path+f'/{x}' for x in dirs]
+# dirs = [images_path+f'/{x}' for x in dirs]
+dirs = [images_path+f'/26048_sample', images_path+f'/28158_sample']
 count = 0
 with open(training_file_name, 'w') as file:
     file.write("img, img1, img2, ann\n")
@@ -27,12 +29,14 @@ with open(training_file_name, 'w') as file:
         annotations = glob.glob(annos_path + '/**/*.jpg', recursive=True) + glob.glob(annos_path + '/**/*.png', recursive=True) + glob.glob(
             annos_path + '/**/*.jpeg', recursive=True)
         annotations.sort()
-        images = images[:len(annotations)]
-        assert len(images) == len(annotations)
-        for im, seg in zip(images, annotations):
-            assert (im.split('/')[-1].split(".")[0] == seg.split('/')[-1].split(".")[0])
-        count += 2
-        for i in range(2, len(images)):
+        # images = images[:len(annotations)]
+        # assert len(images) == len(annotations)
+        # for im, seg in zip(images, annotations):
+        #     assert (im.split('/')[-1].split(".")[0] == seg.split('/')[-1].split(".")[0])
+        # count += 2
+        count += 1
+        # for i in range(2, len(images)):
+        for i in range(1, len(annotations)):
             # remove image path, get image name
             # ex: D/Dateset/Clip1/0056.jpg => 0056.jpg
             file_name = images[i].split('/')[-1]

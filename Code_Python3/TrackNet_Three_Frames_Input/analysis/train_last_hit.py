@@ -21,20 +21,17 @@ from sktime.classification.interval_based import DrCIF
 from sktime.classification.compose import ColumnEnsembleClassifier
 from sktime.transformations.panel.compose import ColumnConcatenator
 from sklearn import tree
-from sklearn.pipeline import Pipeline
 
 
 import pandas as pd
 import glob
 
 # X = np.empty((0, 20, 3))
-X = np.empty((0, 4, 20))
 # X = np.empty((0, 60))
-# X = np.empty((0, 80))
+X = np.empty((0, 80))
 # X_test = np.empty((0, 20, 3))
-X_test = np.empty((0, 4, 20))
 # X_test = np.empty((0, 60))
-# X_test = np.empty((0, 80))
+X_test = np.empty((0, 80))
 Y = np.empty((0,))
 Y_test = np.empty((0,))
 
@@ -54,13 +51,19 @@ for csv_path in csv_file_all:
                 data.append([None, None, 0])
             else:
                 x, y = float(row[2]), float(row[3])
-                if int(row[4])==2:
+                if int(row[4])==1:
                     bounce = 1
                 else:
                     bounce = 0
                 data.append([x, y, bounce])
     bounce = list(np.array(data)[:, 2])
     bounce = np.array([int(x) for x in bounce])
+    index = -1
+    for i in range(len(bounce) - 1, -1, -1):
+        if bounce[i] == 1:
+            index = i
+            break
+    bounce[:index ] = 0
     xy = [l[:2] for l in data]
     xy = interpolation(xy)
     x = list(np.array(xy)[:, 0])
@@ -78,12 +81,13 @@ for csv_path in csv_file_all:
     # seq_X = get_lag_feature(x, y, v)
     seq_X = get_lag_feature(x, y, vx, vy)
     seq_Y = bounce
-    if test==1:
+    if test == 1:
         X_test = np.concatenate([X_test, seq_X], axis=0)
         Y_test = np.concatenate([Y_test, seq_Y], axis=0)
     else:
         X = np.concatenate([X, seq_X], axis=0)
         Y = np.concatenate([Y, seq_Y], axis=0)
+
 # with open('./data/csv/BigDataFrame.csv', newline='', encoding='gbk') as csvfile:
 #     reader = csv.reader(csvfile)
 #     next(reader) # 跳过第一行
@@ -110,10 +114,8 @@ for csv_path in csv_file_all:
 
 # clf = ColumnConcatenator() * DrCIF(n_estimators=10, n_intervals=5)
 # clf = HIVECOTEV2(time_limit_in_minutes=0.2)
-clf = RocketClassifier(num_kernels=10000)
-# steps = [('concatenate', ColumnConcatenator()), ('classify', TimeSeriesForestClassifier(n_estimators=100))]
-# clf = Pipeline(steps)
-# clf = tree.DecisionTreeClassifier()
+# clf = RocketClassifier(num_kernels=2000)
+clf = tree.DecisionTreeClassifier()
 # clf = ColumnEnsembleClassifier(
 #     estimators=[
 #         ("DrCIF0", DrCIF(n_estimators=10, n_intervals=5), [0]),
@@ -124,10 +126,10 @@ clf = RocketClassifier(num_kernels=10000)
 clf.fit(X, Y)
 
 
-Y_pred = clf.predict(X_test)
-TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y_test)
-# Y_pred = clf.predict(X)
-# TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y)
+# Y_pred = clf.predict(X_test)
+# TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y_test)
+Y_pred = clf.predict(X)
+TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y)
 # precision=precision_score(bounce, y_pred, average='macro')
 # recall=recall_score(bounce, y_pred, average='macro')
 # print('precision: ', precision)
@@ -135,4 +137,4 @@ TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y_test)
 print('决策树结果')
 print('模型预测正确平均绝对差: ', diff/TP)
 print(f'模型预测正确个数/GT个数: {TP}/{ALL_HAS}')
-print('没有却检测出来个数: ', FP)
+print('没有开局却检测出来开局个数: ', FP)

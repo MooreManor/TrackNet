@@ -258,11 +258,23 @@ def jud_y_dir(y_vols, interval=4):
             hit[i] = -1  # 负符号
         hit[i] *= big
 
-    index_1 = np.where(hit == 1)[0][0]
-    index_2 = np.where(hit == -1)[0][0]
+    try:
+        index_1 = np.where(hit == 1)[0][0]
+    except:
+        index_1 = -1
+    try:
+        index_2 = np.where(hit == -1)[0][0]
+    except:
+        index_2 = -1
     # index_3 = [i for i, x in enumerate(hit) if x == 1 and (i == 0 or hit[i-1] != 1)][-1]
-    index_3 = find_start_of_hit(hit, 1)[-1]
-    index_4 = find_start_of_hit(hit, -1)[-1]
+    try:
+        index_3 = find_start_of_hit(hit, 1)[-1]
+    except:
+        index_3 = -1
+    try:
+        index_4 = find_start_of_hit(hit, -1)[-1]
+    except:
+        index_4 = -1
     end = index_3 if index_3 > index_4 else index_4
     if index_1 < index_2:
         start = index_1

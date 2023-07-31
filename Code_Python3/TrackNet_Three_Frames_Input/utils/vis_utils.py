@@ -8,8 +8,12 @@ import glob
 import cv2
 from PIL import Image, ImageDraw
 from matplotlib import pyplot as plt
-from utils.utils import add_text_to_frame
-
+# from utils.utils import add_text_to_frame
+def add_text_to_frame(frame, text, position= (10, 100), color=(0, 0, 255), thickness=8, font_scale=4):
+    # 在左上角添加文本
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    frame_with_text = cv2.putText(frame, text, position, font, font_scale, color, thickness)
+    return frame_with_text
 def plot_wave_scat(wave_data, scat_data, ylabel='y', xlabel='frame', title='title'):
     plt.plot(wave_data, color='black')
     plt.title(title)
@@ -150,7 +154,7 @@ if __name__ == '__main__':
         vid_num = (frame_count-1)//1000
         i=0
         for id in range(vid_num+1):
-            res_file = f'../res/{osp.basename(csv_file)[:-4]}/{id*1000}-{(id+1)*1000}.mp4'
+            res_file = f'./res/{osp.basename(csv_file)[:-4]}/{id*1000}-{(id+1)*1000}.mp4'
             os.makedirs(osp.dirname(res_file), exist_ok=True)
             out = cv2.VideoWriter(res_file, fourcc, fps, (width, height))
             data = read_csv(csv_file)

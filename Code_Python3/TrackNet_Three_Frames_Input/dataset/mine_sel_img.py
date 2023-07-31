@@ -37,7 +37,8 @@ def read_csv(csv_file_path):
 
 
 if __name__ == '__main__':
-    csv_file_list = ['/datasetb/tennis/haluo/csv/26048_output.csv']
+    # csv_file_list = ['/datasetb/tennis/haluo/csv/26048_output.csv', '/datasetb/tennis/haluo/csv/28158_output.csv']
+    csv_file_list = ['/datasetb/tennis/haluo/csv/28158_output.csv']
     vid_path = '/datasetb/tennis/haluo/imgs/'
     for csv_file_path in csv_file_list:
 

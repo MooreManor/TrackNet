@@ -40,16 +40,18 @@ images_path = '/datasetb/tennis/haluo/imgs'
 csv_path = '/datasetb/tennis/haluo/csv'
 gt_path = '/datasetb/tennis/haluo/GroundTruth'
 # dirs = glob.glob(images_path+'data/Clip*')
-dirs = os.listdir(images_path)
-dirs = [images_path+f'/{x}' for x in dirs]
+# dirs = os.listdir(images_path)
+# dirs = [images_path+f'/{x}' for x in dirs]
+dirs = [images_path+f'/26048_sample', images_path+f'/28158_sample']
 # dirs = glob.glob(images_path + '/**/*.png', recursive=True)
 for index in dirs:
     #################change the path####################################################
-    pics = glob.glob(images_path + '/**/*.png', recursive=True)
+    pics = glob.glob(index + '/**/*.png', recursive=True)
     pic_name = [int(os.path.basename(x)[:-4]) for x in pics]
-    vid_name = os.path.basename(index)
-    output_pics_path = gt_path + '/' + vid_name
-    label_path = csv_path + f"/{vid_name}.csv"
+    vid_name = os.path.basename(index)[:-7]
+    output_pics_path = gt_path + '/' + vid_name + '_sample'
+    # label_path = csv_path + f"/{vid_name}.csv"
+    label_path = csv_path + f"/{vid_name}"+"_output.csv"
     if not os.path.exists(label_path):
         continue
     ####################################################################################
@@ -59,7 +61,8 @@ for index in dirs:
         os.makedirs(output_pics_path)
 
     # read csv file
-    with open(label_path, 'r', encoding='gbk') as csvfile:
+    # with open(label_path, 'r', encoding='gbk') as csvfile:
+    with open(label_path, 'r') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         # skip the headers
         next(spamreader, None)
@@ -69,8 +72,10 @@ for index in dirs:
             # count += 1
             # if count == 100:
             #     print(row)
-            visibility = 0 if len(row)==1 else 1
-            FileName = int(row[0])-1
+            # visibility = 0 if len(row)==1 else 1
+            visibility = 0 if row[1]=='' else 1
+            # FileName = int(row[0])-1
+            FileName = int(row[0])
             # if visibility == 0, the heatmap is a black image
             if visibility == 0:
                 heatmap = Image.new("RGB", (1920, 1080))
