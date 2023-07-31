@@ -19,6 +19,7 @@ from utils.kp_utils import get_heatmap_preds
 # uiu thr10 Precision: 0.2770244091437427 Recall: 0.14083119952727988
 # tracknet-mine Precision: 0.3048341989612465 Recall: 0.15028560173330707
 # tracknet-ori Precision: 0.21198910081743869 Recall: 0.15324010242269057
+# p: 77.2 r:71.0
 
 # --save_weights_path=weights/model --training_images_name="data/csv/eval.csv" --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
 # --save_weights_path=weights/model --training_images_name="data/csv/eval.csv" --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
@@ -58,7 +59,8 @@ eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, i
 # net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
 from Models.uiunet import UIUNET
 net = UIUNET(9, 1).to(device)
-net.load_state_dict(torch.load('./weights/model.pt.uiu.latest'), strict=True)
+# net.load_state_dict(torch.load('./weights/model.pt.uiu.latest'), strict=True)
+net.load_state_dict(torch.load('./weights/model.pt.uiu.best'), strict=True)
 
 # modelTN = Models.TrackNet.TrackNet
 # net = modelTN(n_classes, input_height=input_height, input_width=input_width)

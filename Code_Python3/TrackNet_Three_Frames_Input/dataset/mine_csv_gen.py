@@ -35,17 +35,19 @@ with open(training_file_name, 'w') as file:
         #     assert (im.split('/')[-1].split(".")[0] == seg.split('/')[-1].split(".")[0])
         # count += 2
         count += 1
+        file_images = [os.path.basename(x) for x in images]
         # for i in range(2, len(images)):
         for i in range(1, len(annotations)):
             # remove image path, get image name
             # ex: D/Dateset/Clip1/0056.jpg => 0056.jpg
-            file_name = images[i].split('/')[-1]
+            file_name = annotations[i].split('/')[-1]
 
+            pid = file_images.index(file_name)
             # check if file image name same as annotation name
-            assert (images[i].split('/')[-1].split(".")[0] == annotations[i].split('/')[-1].split(".")[0])
+            assert (images[pid].split('/')[-1].split(".")[0] == annotations[i].split('/')[-1].split(".")[0])
 
             # write all of images path
-            file.write(images[i] + "," + images[i - 1] + "," + images[i - 2] + "," + annotations[i] + "\n")
+            file.write(images[pid] + "," + images[pid - 1] + "," + images[pid - 2] + "," + annotations[i] + "\n")
             count += 1
 
     # for g in range(1, 11):
