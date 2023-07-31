@@ -75,6 +75,6 @@ def get_lag_feature(x, y, vx, vy):
     X = X.values
     len_X = len(X)
     X = np.stack([np.array(series.values) for series in X.reshape(-1)])
-    X = X.reshape(len_X, 4, 20)
+    X = X.reshape(len_X, 20, 4)
     # X = X.reshape(len_X, 80)
     return X
