@@ -15,26 +15,26 @@ import csv
 import numpy as np
 from sktime.datatypes._panel._convert import from_2d_array_to_nested
 from sktime.classification.interval_based import TimeSeriesForestClassifier
-from sktime.classification.kernel_based import RocketClassifier
-from sktime.classification.hybrid import HIVECOTEV2
-from sktime.classification.interval_based import DrCIF
-from sktime.classification.compose import ColumnEnsembleClassifier
-from sktime.transformations.panel.compose import ColumnConcatenator
-from sklearn import tree
-from sklearn.pipeline import Pipeline
+# from sktime.classification.kernel_based import RocketClassifier
+# from sktime.classification.hybrid import HIVECOTEV2
+# from sktime.classification.interval_based import DrCIF
+# from sktime.classification.compose import ColumnEnsembleClassifier
+# from sktime.transformations.panel.compose import ColumnConcatenator
+# from sklearn import tree
+# from sklearn.pipeline import Pipeline
 
 
 import pandas as pd
 import glob
 
 # X = np.empty((0, 20, 3))
-X = np.empty((0, 4, 20))
+# X = np.empty((0, 4, 20))
 # X = np.empty((0, 60))
-# X = np.empty((0, 80))
+X = np.empty((0, 80))
 # X_test = np.empty((0, 20, 3))
-X_test = np.empty((0, 4, 20))
+# X_test = np.empty((0, 4, 20))
 # X_test = np.empty((0, 60))
-# X_test = np.empty((0, 80))
+X_test = np.empty((0, 80))
 Y = np.empty((0,))
 Y_test = np.empty((0,))
 
@@ -107,10 +107,22 @@ for csv_path in csv_file_all:
 # clf = tree.DecisionTreeClassifier()
 # clf = TimeSeriesForestClassifier()
 # clf.fit(X, Y)
+from sklearn.svm import SVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+# from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+
+# clf = make_pipeline(StandardScaler(), SVC(gamma='auto'))
+# clf = SVC(gamma='auto')
+# clf = KNeighborsClassifier(3)
+# clf = AdaBoostClassifier()
+clf = MLPClassifier(alpha=1, max_iter=1000)
 
 # clf = ColumnConcatenator() * DrCIF(n_estimators=10, n_intervals=5)
 # clf = HIVECOTEV2(time_limit_in_minutes=0.2)
-clf = RocketClassifier(num_kernels=10000)
+# clf = RocketClassifier(num_kernels=10000)
 # steps = [('concatenate', ColumnConcatenator()), ('classify', TimeSeriesForestClassifier(n_estimators=100))]
 # clf = Pipeline(steps)
 # clf = tree.DecisionTreeClassifier()
@@ -123,16 +135,22 @@ clf = RocketClassifier(num_kernels=10000)
 
 clf.fit(X, Y)
 
+Y_pred = clf.predict(X)
+TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y)
+print('Train决策树结果')
+print('模型预测正确平均绝对差: ', diff/TP)
+print(f'模型预测正确个数/GT个数: {TP}/{ALL_HAS}')
+print('没有却检测出来个数: ', FP)
 
 Y_pred = clf.predict(X_test)
 TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y_test)
-# Y_pred = clf.predict(X)
-# TP, ALL_HAS, FP, diff = classify_metrics(Y_pred, Y)
+print('Test决策树结果')
+print('模型预测正确平均绝对差: ', diff/TP)
+print(f'模型预测正确个数/GT个数: {TP}/{ALL_HAS}')
+print('没有却检测出来个数: ', FP)
+
 # precision=precision_score(bounce, y_pred, average='macro')
 # recall=recall_score(bounce, y_pred, average='macro')
 # print('precision: ', precision)
 # print('recall: ', recall)
-print('决策树结果')
-print('模型预测正确平均绝对差: ', diff/TP)
-print(f'模型预测正确个数/GT个数: {TP}/{ALL_HAS}')
-print('没有却检测出来个数: ', FP)
+

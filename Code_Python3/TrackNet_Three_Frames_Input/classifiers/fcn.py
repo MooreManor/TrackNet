@@ -85,11 +85,18 @@ class Classifier_FCN:
 		y_pred = np.argmax(y_pred , axis=1)
 
 		# save_logs(self.output_directory, hist, y_pred, y_true, duration)
+
 		from utils.metrics import classify_metrics
 		TP, ALL_HAS, FP, diff = classify_metrics(y_pred, y_true)
 
+		y_true = np.argmax(y_train, axis=1)
+		y_pred = self.predict(x_train, y_true, x_train, y_train, y_val,
+							  return_df_metrics=False)
+		y_pred = np.argmax(y_pred, axis=1)
+		TP_tr, ALL_HAS_tr, FP_tr, diff_tr = classify_metrics(y_pred, y_true)
+
 		keras.backend.clear_session()
-		return TP, ALL_HAS, FP, diff
+		return TP, ALL_HAS, FP, diff, TP_tr, ALL_HAS_tr, FP_tr, diff_tr
 
 	def predict(self, x_test, y_true,x_train,y_train,y_test,return_df_metrics = True):
 		model_path = self.output_directory + 'best_model.hdf5'

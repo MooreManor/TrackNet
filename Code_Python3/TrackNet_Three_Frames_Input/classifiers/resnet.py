@@ -8,6 +8,8 @@ import time
 
 import matplotlib
 # from utils.utils import save_test_duration
+from utils.metrics import tennis_loss
+
 
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -106,7 +108,8 @@ class Classifier_RESNET:
 
         model = keras.models.Model(inputs=input_layer, outputs=output_layer)
 
-        model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adam(),
+        # model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adam(),
+        model.compile(loss=tennis_loss, optimizer=keras.optimizers.Adam(),
                       metrics=['accuracy'])
 
         reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=50, min_lr=0.0001)
@@ -127,7 +130,7 @@ class Classifier_RESNET:
         # x_val and y_val are only used to monitor the test loss and NOT for training
         batch_size = 64
         # nb_epochs = 1500
-        nb_epochs = 100
+        nb_epochs = 500
 
         mini_batch_size = int(min(x_train.shape[0] / 10, batch_size))
 
@@ -142,22 +145,24 @@ class Classifier_RESNET:
 
         y_pred = self.predict(x_val, y_true, x_train, y_train, y_val,
                               return_df_metrics=False)
-
-        # save predictions
-        # np.save(self.output_directory + 'y_pred.npy', y_pred)
-
-        # convert the predicted from binary to integer
         y_pred = np.argmax(y_pred, axis=1)
 
         from utils.metrics import classify_metrics
         TP, ALL_HAS, FP, diff = classify_metrics(y_pred, y_true)
 
+        y_true = np.argmax(y_train, axis=1)
+        y_pred = self.predict(x_train, y_true, x_train, y_train, y_val,
+                              return_df_metrics=False)
+        y_pred = np.argmax(y_pred, axis=1)
+        TP_tr, ALL_HAS_tr, FP_tr, diff_tr = classify_metrics(y_pred, y_true)
+
         keras.backend.clear_session()
-        return TP, ALL_HAS, FP, diff
+        return TP, ALL_HAS, FP, diff, TP_tr, ALL_HAS_tr, FP_tr, diff_tr
 
     def predict(self, x_test, y_true, x_train, y_train, y_test, return_df_metrics=True):
         start_time = time.time()
         model_path = self.output_directory + 'best_model.hdf5'
+        # model_path = self.output_directory + 'last_model.hdf5'
         model = keras.models.load_model(model_path)
         y_pred = model.predict(x_test)
         if return_df_metrics:

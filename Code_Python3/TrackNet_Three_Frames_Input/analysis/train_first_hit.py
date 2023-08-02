@@ -15,11 +15,11 @@ import csv
 import numpy as np
 from sktime.datatypes._panel._convert import from_2d_array_to_nested
 from sktime.classification.interval_based import TimeSeriesForestClassifier
-from sktime.classification.kernel_based import RocketClassifier
-from sktime.classification.hybrid import HIVECOTEV2
-from sktime.classification.interval_based import DrCIF
-from sktime.classification.compose import ColumnEnsembleClassifier
-from sktime.transformations.panel.compose import ColumnConcatenator
+# from sktime.classification.kernel_based import RocketClassifier
+# from sktime.classification.hybrid import HIVECOTEV2
+# from sktime.classification.interval_based import DrCIF
+# from sktime.classification.compose import ColumnEnsembleClassifier
+# from sktime.transformations.panel.compose import ColumnConcatenator
 from sklearn import tree
 
 

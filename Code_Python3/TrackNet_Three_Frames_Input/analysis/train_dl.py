@@ -10,48 +10,68 @@ warnings.filterwarnings('ignore')
 # 忽略特定类型的警告
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 from utils.utils import calculate_velocity, add_csv_col, jud_dir, add_text_to_video, interpolation
-from utils.metrics import classify_metrics
-from utils.feat_utils import get_lag_feature
+from utils.metrics import classify_metrics, tennis_loss
+from utils.feat_utils import get_lag_feature, get_single_lag_feature
 import csv
 import numpy as np
 
 
 import glob
 
-# X = np.empty((0, 20, 3))
-x_train = np.empty((0, 20, 4))
-# x_train = np.empty((0, 4, 20))
-# X = np.empty((0, 60))
-# X = np.empty((0, 80))
-# X_test = np.empty((0, 20, 3))
-x_test = np.empty((0, 20, 4))
-# x_test = np.empty((0, 4, 20))
-# X_test = np.empty((0, 60))
-# X_test = np.empty((0, 80))
 y_train = np.empty((0,))
 y_test = np.empty((0,))
+
+target_name = 'hit'
+# target_name = 'first_hit'
+# classifier_name = 'fcn'
+# classifier_name = 'inception'
+classifier_name = 'resnet'
+
+lag_num = 20
+var_list = ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'v', 'a']
+# var_list = ['x', 'y', 'v', 'a']
+# var_list = ['x', 'y', 'vx', 'vy', 'ax', 'ay']
+var_num = len(var_list)
+x_test = np.empty((0, lag_num, var_num))
+x_train = np.empty((0, lag_num, var_num))
+
+# target_name = 'bounce'
+csv_val = 1 if 'hit' in target_name else 2
+first = 1 if 'first' in target_name else 0
+last = 1 if 'last' in target_name else 0
 
 test_game = ['game9', 'game10']
 csv_file_all = glob.glob('/datasetb/tennis/' + '/**/Label.csv', recursive=True)
 for csv_path in csv_file_all:
     data = []
+    seq_X = []
     test = 0
     if any(x in csv_path for x in test_game):
         test = 1
 
+    if first:
+        flag=0
     with open(csv_path, newline='', encoding='gbk') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)  # 跳过第一行
         for row in reader:
+            bounce = 0
             if row[2] == '':
                 data.append([None, None, 0])
             else:
                 x, y = float(row[2]), float(row[3])
-                if int(row[4])==2:
-                    bounce = 1
+                # if int(row[4])==2:
+                if int(row[4]) == csv_val:
+                    if first:
+                        if flag == 0:
+                            bounce = 1
+                            flag = 1
+                    else:
+                        bounce = 1
                 else:
                     bounce = 0
                 data.append([x, y, bounce])
+
     bounce = list(np.array(data)[:, 2])
     bounce = np.array([int(x) for x in bounce])
     xy = [l[:2] for l in data]
@@ -69,7 +89,11 @@ for csv_path in csv_file_all:
     v = pow(pow(v[:, 0], 2) + pow(v[:, 1], 2), 0.5)
     a = pow(pow(a[:, 0], 2) + pow(a[:, 1], 2), 0.5)
     # seq_X = get_lag_feature(x, y, v)
-    seq_X = get_lag_feature(x, y, vx, vy)
+    # tmp = get_single_lag_feature(x)
+    for var in var_list:
+        tmp = get_single_lag_feature(eval(var), lag=lag_num)
+        seq_X.append(tmp)
+    seq_X = np.concatenate(seq_X, axis=2)
     seq_Y = bounce
     if test==1:
         x_test = np.concatenate([x_test, seq_X], axis=0)
@@ -108,9 +132,13 @@ def fit_classifier():
     input_shape = x_train.shape[1:]
     classifier = create_classifier(classifier_name, input_shape, nb_classes, output_directory)
 
-    TP, ALL_HAS, FP, diff = classifier.fit(x_train, y_train, x_test, y_test, y_true)
+    TP, ALL_HAS, FP, diff, TP_tr, ALL_HAS_tr, FP_tr, diff_tr = classifier.fit(x_train, y_train, x_test, y_test, y_true)
 
-    print('决策树结果')
+    print(f'{target_name}_train结果')
+    print('模型预测正确平均绝对差: ', diff_tr / TP_tr)
+    print(f'模型预测正确个数/GT个数: {TP_tr}/{ALL_HAS_tr}')
+    print('没有却检测出来个数: ', FP_tr)
+    print(f'{target_name}_test结果')
     print('模型预测正确平均绝对差: ', diff / TP)
     print(f'模型预测正确个数/GT个数: {TP}/{ALL_HAS}')
     print('没有却检测出来个数: ', FP)
@@ -150,10 +178,7 @@ def create_classifier(classifier_name, input_shape, nb_classes, output_directory
 
 if __name__ == '__main__':
     root_dir = './'
-    # classifier_name = 'fcn'
-    # classifier_name = 'inception'
-    classifier_name = 'resnet'
     itr = ''
-    output_directory = root_dir + '/results/' + classifier_name + '/'
+    output_directory = root_dir + '/results/' + classifier_name + '/' + target_name
     os.makedirs(output_directory, exist_ok=True)
     fit_classifier()

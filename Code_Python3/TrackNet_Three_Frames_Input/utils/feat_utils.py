@@ -76,5 +76,21 @@ def get_lag_feature(x, y, vx, vy):
     len_X = len(X)
     X = np.stack([np.array(series.values) for series in X.reshape(-1)])
     X = X.reshape(len_X, 20, 4)
+    # X = X.reshape(len_X, 4, 20)
     # X = X.reshape(len_X, 80)
+    return X
+
+def get_single_lag_feature(var, lag=20):
+    test_df = pd.DataFrame({'var': var})
+    for i in range(lag, 0, -1):
+        test_df[f'lagVar_{i}'] = test_df['var'].shift(i, fill_value=0)
+
+    test_df.drop(['var'], 1, inplace=True)
+    Vars = test_df.filter(regex=r'^lagVar_', axis=1)
+    Vars = Vars.reindex(columns=[f'lagVar_{i}' for i in range(lag, 0, -1)])
+    Vars = from_2d_array_to_nested(Vars.to_numpy())
+    X = Vars.values
+    len_X = len(X)
+    X = np.stack([np.array(series.values) for series in X.reshape(-1)])
+    X = X.reshape(len_X, lag, 1)
     return X
