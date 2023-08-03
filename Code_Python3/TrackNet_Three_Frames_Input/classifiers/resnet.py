@@ -38,6 +38,7 @@ class Classifier_RESNET:
 
     def build_model(self, input_shape, nb_classes):
         n_feature_maps = 64
+        # n_feature_maps = 32
 
         input_layer = keras.layers.Input(input_shape)
 
@@ -92,6 +93,7 @@ class Classifier_RESNET:
         conv_y = keras.layers.Activation('relu')(conv_y)
 
         conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same')(conv_y)
+        # conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same', kernel_regularizer=tf.keras.regularizers.l2(l=0.001), bias_regularizer=tf.keras.regularizers.l2(l=0.001))(conv_y)
         conv_z = keras.layers.BatchNormalization()(conv_z)
 
         # no need to expand channels because they are equal
@@ -108,8 +110,8 @@ class Classifier_RESNET:
 
         model = keras.models.Model(inputs=input_layer, outputs=output_layer)
 
-        # model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adam(),
-        model.compile(loss=tennis_loss, optimizer=keras.optimizers.Adam(),
+        model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adam(),
+        # model.compile(loss=tennis_loss, optimizer=keras.optimizers.Adam(),
                       metrics=['accuracy'])
 
         reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=50, min_lr=0.0001)
@@ -130,7 +132,7 @@ class Classifier_RESNET:
         # x_val and y_val are only used to monitor the test loss and NOT for training
         batch_size = 64
         # nb_epochs = 1500
-        nb_epochs = 500
+        nb_epochs = 200
 
         mini_batch_size = int(min(x_train.shape[0] / 10, batch_size))
 

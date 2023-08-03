@@ -102,6 +102,9 @@ for csv_path in csv_file_all:
         x_train = np.concatenate([x_train, seq_X], axis=0)
         y_train = np.concatenate([y_train, seq_Y], axis=0)
 
+noise = np.random.uniform(low=-1.0, high=1.0, size=(y_train.shape[0], 20, 8))
+x_train = x_train + noise
+
 def fit_classifier():
     # x_train = datasets_dict[dataset_name][0]
     # y_train = datasets_dict[dataset_name][1]
