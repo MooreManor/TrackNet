@@ -75,7 +75,8 @@ eval_dt = TennisDataset(images_path='data/csv/eval.csv', n_classes=n_classes, in
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width)
 
-data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
+# data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=8)
+data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=0)
 eval_data_loader = DataLoader(eval_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=True, num_workers=0)
 # data_loader = DataLoader(tennis_dt, batch_size=train_batch_size, shuffle=False, num_workers=8)

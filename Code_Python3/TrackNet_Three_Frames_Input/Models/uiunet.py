@@ -314,6 +314,43 @@ class RSU4F(nn.Module):
 
         return hx1d + hxin
 
+class classifier_head(nn.Module):
+    def __init__(self, in_ch=3, out_ch=1):
+        super(classifier_head, self).__init__()
+        self.feature = nn.Sequential(
+            nn.Conv2d(64, 96, kernel_size=7, stride=2, padding=0),
+            nn.ReLU(),
+            nn.LocalResponseNorm(5, alpha=0.0005, beta=0.75, k=2),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True),
+            nn.Conv2d(96, 256, kernel_size=5, stride=2, padding=1),
+            nn.ReLU(),
+            nn.LocalResponseNorm(5, alpha=0.0005, beta=0.75, k=2),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True),
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
+        )
+        self.classifer = nn.Sequential(
+            nn.AdaptiveAvgPool2d((7, 7)),
+            torch.nn.Flatten(),
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, 1),
+        )
+
+    def forward(self, x):
+        x = self.feature(x)
+        x = self.classifer(x)
+        return x
+
 
 ##### UIU-net ####
 class UIUNET(nn.Module):
@@ -360,6 +397,22 @@ class UIUNET(nn.Module):
         self.fuse3 = self._fuse_layer(256, 256, 256, fuse_mode='AsymBi')
         self.fuse2 = self._fuse_layer(128, 128, 128, fuse_mode='AsymBi')
 
+        # self.classifier = nn.Sequential(
+        #     nn.Dropout(),
+        #     nn.Linear(256 * 6 * 6, 4096),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(),
+        #     nn.Linear(4096, 4096),
+        #     nn.ReLU(inplace=True),
+        #     nn.Linear(4096, num_classes),
+        # )
+
+
+        # 640, 360, 256
+        self.hit_classifier = classifier_head()
+        self.bounce_classifier = classifier_head()
+        self.first_classifier = classifier_head()
+        self.last_classifier = classifier_head()
 
     def _fuse_layer(self, in_high_channels, in_low_channels, out_channels,fuse_mode='AsymBi'):#fuse_mode='AsymBi'
         # assert fuse_mode in ['BiLocal', 'AsymBi', 'BiGlobal']
@@ -445,6 +498,12 @@ class UIUNET(nn.Module):
         d6 = _upsample_like(d62,d1)
 
         d0 = self.outconv(torch.cat((d1,d2,d3,d4,d5,d6),1))
+
+        # tennis output
+        hit = self.hit_classifier(hx1d)
+        first = self.first_classifier(hx1d)
+        last = self.last_classifier(hx1d)
+        bounce = self.bounce_classifier(hx1d)
 
         return F.sigmoid(d0), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6)
 
