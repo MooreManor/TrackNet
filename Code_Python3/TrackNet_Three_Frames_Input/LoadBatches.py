@@ -116,14 +116,14 @@ class TennisDataset(Dataset):
 			for row in reader:
 				for (i, v) in enumerate(row):
 					columns[i].append(v)
-		if self.train:
-			with open('data/csv/mine_train.csv') as f:
-				reader = csv.reader(f)
-				next(reader)
-				for row in reader:
-					for (i, v) in enumerate(row):
-						columns[i].append(v)
-		zipped = itertools.cycle(zip(columns[0], columns[1], columns[2], columns[3]))
+		# if self.train:
+		# 	with open('data/csv/mine_train.csv') as f:
+		# 		reader = csv.reader(f)
+		# 		next(reader)
+		# 		for row in reader:
+		# 			for (i, v) in enumerate(row):
+		# 				columns[i].append(v)
+		zipped = itertools.cycle(zip(columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7]))
 		self.data = [next(zipped) for i in range(len(columns[0]))]
 
 		if num_images > 0:
@@ -134,7 +134,7 @@ class TennisDataset(Dataset):
 	def __len__(self):
 		return len(self.data)
 	def __getitem__(self, index):
-		path, path1, path2, anno = self.data[index]
+		path, path1, path2, anno, hit, bounce, first, last = self.data[index]
 		input = getInputArr(path, path1, path2, self.input_width, self.input_height)
 		output = getOutputArr(anno , self.n_classes , self.output_width , self.output_height, self.resize)
 		gt_ht = cv2.imread(anno, 1)
@@ -145,4 +145,4 @@ class TennisDataset(Dataset):
 			img2 = cv2.imread(path2, 1)
 			imgs = np.concatenate((img, img1, img2), axis=2)
 			return np.array(input), np.array(output), np.array(gt_ht), np.array(imgs)
-		return np.array(input), np.array(output), np.array(gt_ht)
+		return np.array(input), np.array(output), np.array(gt_ht), np.array([hit]).astype(np.float32), np.array([bounce]).astype(np.float32), np.array([first]).astype(np.float32), np.array([last]).astype(np.float32)

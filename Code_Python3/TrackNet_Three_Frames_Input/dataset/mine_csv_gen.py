@@ -17,7 +17,7 @@ dirs = os.listdir(images_path)
 dirs = [images_path+f'/26048_sample', images_path+f'/28158_sample']
 count = 0
 with open(training_file_name, 'w') as file:
-    file.write("img, img1, img2, ann\n")
+    file.write("img, img1, img2, ann, hit, bounce, first, last\n")
     # for g in range(1, 9):
     for dir in dirs:
         annos_path = gt_path + f'/{os.path.basename(dir)}'

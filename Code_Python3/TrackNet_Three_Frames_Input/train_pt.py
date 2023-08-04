@@ -32,6 +32,7 @@ def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
 
     return loss0, loss
 # --save_weights_path=weights/model --training_images_name="data/csv/training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
+# --save_weights_path=weights/model --training_images_name="data/csv/match_train_full.csv" --epochs=100 --n_classes=256 --input_height=360 --input_width=640 --batch_size=2
 # --save_weights_path=weights/model --training_images_name="data/csv/training_model3_mine.csv" --epochs=100 --n_classes=256 --input_height=540 --input_width=960 --batch_size=2
 #parse parameters
 parser = argparse.ArgumentParser()
@@ -144,13 +145,21 @@ for epoch in range(epochs):
         # pass
         if step >= step_per_epochs:
             break
-        input, label, vis_output = batch
+        input, label, vis_output, hit, bounce, first, last = batch
         input = input.to(device)
         label = label.to(device)
-        d0, d1, d2, d3, d4, d5, d6 = net(input)
+        hit = hit.to(device)
+        bounce = bounce.to(device)
+        first = first.to(device)
+        last = last.to(device)
+        d0, d1, d2, d3, d4, d5, d6, pred_hit, pred_bounce, pred_first, pred_last = net(input)
         pred = d0
         # loss = criterion(pred, label.reshape(label.shape[0], -1, 1))
         loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, label.reshape(label.shape[0], 1, input_height, input_width))
+        loss += bce_loss(pred_hit, hit)
+        loss += bce_loss(pred_bounce, bounce)
+        loss += bce_loss(pred_first, first)
+        loss += bce_loss(pred_last, last)
         # loss = criterion(pred, label.float())
         pbar.set_postfix({"loss": float(loss.cpu().detach().numpy())})
         optimizer.zero_grad()
@@ -176,14 +185,22 @@ for epoch in range(epochs):
                     total=len(eval_data_loader))
         all_loss = 0
         for step, batch in enumerate(eval_pbar):
-            input, label, vis_output = batch
+            input, label, vis_output, hit, bounce, first, last = batch
             input = input.to(device)
             label = label.to(device)
+            hit = hit.to(device)
+            bounce = bounce.to(device)
+            first = first.to(device)
+            last = last.to(device)
             with torch.no_grad():
-                d1, d2, d3, d4, d5, d6, d7 = net(input)
+                d0, d1, d2, d3, d4, d5, d6, pred_hit, pred_bounce, pred_first, pred_last = net(input)
                 pred = d1[:, :, :, :]
             loss = bce_loss(pred, label.reshape(label.shape[0], 1, input_height, input_width))
             all_loss += loss.item()
+            all_loss += bce_loss(pred_hit, hit).item()
+            all_loss += bce_loss(pred_bounce, bounce).item()
+            all_loss += bce_loss(pred_first, first).item()
+            all_loss += bce_loss(pred_last, last).item()
             if step % eval_log_frep == 0:
                 vis_input = input.permute(0, 2, 3, 1)[:, :, :, 0:3].cpu().detach().numpy().astype(np.uint8)
                 vis_pred = pred.reshape(pred.shape[0], input_height, input_width, 1) * 255.

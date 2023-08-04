@@ -344,6 +344,7 @@ class classifier_head(nn.Module):
             nn.ReLU(True),
             nn.Dropout(),
             nn.Linear(4096, 1),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -505,5 +506,5 @@ class UIUNET(nn.Module):
         last = self.last_classifier(hx1d)
         bounce = self.bounce_classifier(hx1d)
 
-        return F.sigmoid(d0), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6)
+        return F.sigmoid(d0), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6), hit, bounce, first, last
 
