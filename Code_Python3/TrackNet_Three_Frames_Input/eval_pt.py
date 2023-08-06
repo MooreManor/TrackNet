@@ -58,7 +58,9 @@ eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, i
 # net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
 from Models.uiunet import UIUNET
 net = UIUNET(9, 1).to(device)
-net.load_state_dict(torch.load('./weights/model.pt.uiu.latest'), strict=True)
+# net.load_state_dict(torch.load('./weights/model.pt.uiu.latest'), strict=True)
+# net.load_state_dict(torch.load('./weights/model.pt.multi.latest'), strict=True)
+net.load_state_dict(torch.load('./weights/model.pt.multi.best'), strict=True)
 
 # modelTN = Models.TrackNet.TrackNet
 # net = modelTN(n_classes, input_height=input_height, input_width=input_width)
@@ -99,7 +101,7 @@ for step, batch in enumerate(pbar):
     # pred = net.predict(input.numpy())
     with torch.no_grad():
         # pred = net(input)
-        d1, d2, d3, d4, d5, d6, d7 = net(input)
+        d1, d2, d3, d4, d5, d6, d7, pred_hit, pred_bounce, pred_first, pred_last = net(input)
         pred = d1[:, :, :, :]
     pred = pred.reshape((train_batch_size, input_height, input_width))
     # pred = pred.reshape((train_batch_size, input_height, input_width, n_classes)).argmax(axis=3)
