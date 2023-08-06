@@ -146,3 +146,61 @@ class TennisDataset(Dataset):
 			imgs = np.concatenate((img, img1, img2), axis=2)
 			return np.array(input), np.array(output), np.array(gt_ht), np.array(imgs)
 		return np.array(input), np.array(output), np.array(gt_ht)
+
+
+class VideoDataset(Dataset):
+	def __init__(self, video_path,  n_classes , input_height , input_width , output_height , output_width, train=True, num_images=0, rt_ori=False):
+		self.images_path = video_path
+		self.n_classes = n_classes
+		self.input_height = input_height
+		self.input_width = input_width
+		self.output_height = output_height
+		self.output_width = output_width
+		self.train = train
+		self.resize = train
+		self.rt_ori = rt_ori
+		# read csv file to 'zipped'
+		self.data = self.get_video_frames(video_path)
+
+		if num_images > 0:
+			# select a random subset of the dataset
+			rand = np.random.randint(0, len(self.data), size=(num_images))
+			self.data = np.array(self.data)[rand]
+
+	def __len__(self):
+		return len(self.data)
+	def __getitem__(self, index):
+		if index<2:
+			return 1
+		img = self.data[index]
+		img1 = self.data[index - 1]
+		img2 = self.data[index - 2]
+		if self.rt_ori:
+			imgs_ori = np.concatenate((img, img1, img2), axis=2)
+		img = cv2.resize(img, (self.input_width, self.input_height))
+		img1 = cv2.resize(img1, (self.input_width, self.input_height))
+		img2 = cv2.resize(img2, (self.input_width, self.input_height))
+		img = img.astype(np.float32)
+		img1 = img1.astype(np.float32)
+		img2 = img2.astype(np.float32)
+		imgs = np.concatenate((img, img1, img2), axis=2)
+		input = np.rollaxis(imgs, 2, 0)
+		if self.rt_ori:
+			return np.array(input), np.array(imgs_ori)
+
+		return np.array(input)
+
+	def get_video_frames(self, video_path):
+		frames = []
+		cap = cv2.VideoCapture(video_path)
+		total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+		frame_indices = range(total_frames)
+
+		for idx in frame_indices:
+			cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+			ret, frame = cap.read()
+			frames.append(frame)
+
+		cap.release()
+		return frames
