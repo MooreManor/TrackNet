@@ -79,8 +79,8 @@ if not os.path.exists(dst_folder+'/imgs'):
 eval_dt = VideoDataset(video_path=input_video_path, n_classes=n_classes, input_height=360, input_width=640,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=360, output_width=640, train=False, rt_ori=True)
-data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=8)
-# data_loader = DataLoader(eval_dt, batch_size=4, shuffle=False, num_workers=0)
+# data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=8)
+data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=0)
 
 from tqdm import tqdm
 pbar = tqdm(data_loader,
@@ -118,6 +118,7 @@ for step, batch in enumerate(pbar):
 	pred_circles, conf = get_heatmap_preds(torch.from_numpy(heatmap))
 	pred_circles = pred_circles.numpy()
 	pred_has_circle = [np.max(img) > 0 for img in heatmap]
+	# pred_has_circle = [np.max(img) > 50 for img in heatmap]
 	for j, pred_has in enumerate(pred_has_circle):
 		output_img = ori_img[j]
 		save_np_image(img=heatmap, img_folder=dst_folder + '/htm', img_name="{:06d}.png".format(currentFrame))
@@ -133,7 +134,7 @@ for step, batch in enumerate(pbar):
 			draw.rectangle(bbox, outline='red', width=2)
 			del draw
 		opencvImage = cv2.cvtColor(np.array(PIL_image), cv2.COLOR_RGB2BGR)
-		save_np_image(PIL_img=opencvImage, img_folder=dst_folder + '/bbox', img_name="{:06d}.png".format(currentFrame))
+		save_np_image(img=opencvImage, img_folder=dst_folder + '/bbox', img_name="{:06d}.png".format(currentFrame))
 		output_video.write(opencvImage)
 		currentFrame += 1
 

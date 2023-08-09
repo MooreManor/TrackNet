@@ -54,6 +54,7 @@ device = 'cuda'
 eval_dt = TennisDataset(images_path=training_images_name, n_classes=n_classes, input_height=input_height, input_width=input_width,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=input_height, output_width=input_width, train=False, rt_ori=True)
+                          # output_height=input_height, output_width=input_width, train=False, rt_ori=True, num_images=200)
 
 # net = TrackNet_pt(n_classes=n_classes, input_height=input_height, input_width=input_width).to(device)
 # net.load_state_dict(torch.load('./weights/model.pt.best'), strict=True)
@@ -123,7 +124,8 @@ for step, batch in enumerate(pbar):
     pred_circles = pred_circles.numpy()
     #
     # heatmap = [cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)[1] for img in heatmap]
-    pred_has_circle = [np.max(img) > 0 for img in heatmap]
+    # pred_has_circle = [np.max(img) > 0 for img in heatmap]
+    pred_has_circle = [np.max(img) > 50 for img in heatmap]
     # pred_circles = [cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=1,minDist=10,param2=2,minRadius=2,maxRadius=7) for img in heatmap]
     # ------------------------------
 
@@ -163,8 +165,8 @@ for step, batch in enumerate(pbar):
         if tmp_hp==1:
             delta_circle = abs(tmp_pred - tmp_gt)
             # ori
-            # if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 200 and tmp_hp==tmp_hg:
-            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 50 and tmp_hp==tmp_hg:
+            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 200 and tmp_hp==tmp_hg:
+            # if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 100 and tmp_hp==tmp_hg:
                 TP += 1
             else:
                 FP += 1

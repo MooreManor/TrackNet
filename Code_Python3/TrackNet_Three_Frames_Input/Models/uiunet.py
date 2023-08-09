@@ -400,6 +400,7 @@ class UIUNET(nn.Module):
         hx = self.pool56(hx5)
 
         #stage 6
+
         hx6 = self.stage6(hx)
         hx6up = _upsample_like(hx6,hx5)
 
@@ -447,4 +448,6 @@ class UIUNET(nn.Module):
         d0 = self.outconv(torch.cat((d1,d2,d3,d4,d5,d6),1))
 
         return F.sigmoid(d0), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6)
+        # return F.sigmoid(d0), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6), hx6
+        return F.softmax(d0), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6)
 
