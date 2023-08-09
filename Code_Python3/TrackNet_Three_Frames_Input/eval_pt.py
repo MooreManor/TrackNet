@@ -162,7 +162,9 @@ for step, batch in enumerate(pbar):
         # if tmp_hp==tmp_hg and tmp_hg==1:
         if tmp_hp==1:
             delta_circle = abs(tmp_pred - tmp_gt)
-            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 200 and tmp_hp==tmp_hg:
+            # ori
+            # if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 200 and tmp_hp==tmp_hg:
+            if delta_circle[0]*delta_circle[0]+delta_circle[1]*delta_circle[1] < 50 and tmp_hp==tmp_hg:
                 TP += 1
             else:
                 FP += 1
