@@ -79,8 +79,8 @@ if not os.path.exists(dst_folder+'/imgs'):
 eval_dt = VideoDataset(video_path=input_video_path, n_classes=n_classes, input_height=360, input_width=640,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=360, output_width=640, train=False, rt_ori=True)
-# data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=8)
-data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=0)
+data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=8)
+# data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=0)
 
 from tqdm import tqdm
 pbar = tqdm(data_loader,
