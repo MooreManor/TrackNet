@@ -8,8 +8,8 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt 
 
-from utils.utils import save_logs
-from utils.utils import calculate_metrics
+# from utils.utils import save_logs
+# from utils.utils import calculate_metrics
 
 class Classifier_MLP:
 
@@ -30,15 +30,17 @@ class Classifier_MLP:
 		input_layer_flattened = keras.layers.Flatten()(input_layer)
 		
 		layer_1 = keras.layers.Dropout(0.1)(input_layer_flattened)
-		layer_1 = keras.layers.Dense(500, activation='relu')(layer_1)
+		# layer_1 = keras.layers.Dense(500, activation='relu')(layer_1)
+		layer_1 = keras.layers.Dense(40, activation='relu')(layer_1)
 
 		layer_2 = keras.layers.Dropout(0.2)(layer_1)
-		layer_2 = keras.layers.Dense(500, activation='relu')(layer_2)
+		layer_2 = keras.layers.Dense(40, activation='relu')(layer_2)
 
-		layer_3 = keras.layers.Dropout(0.2)(layer_2)
-		layer_3 = keras.layers.Dense(500, activation='relu')(layer_3)
+		# layer_3 = keras.layers.Dropout(0.2)(layer_2)
+		# layer_3 = keras.layers.Dense(500, activation='relu')(layer_3)
 
-		output_layer = keras.layers.Dropout(0.3)(layer_3)
+		output_layer = keras.layers.Dropout(0.3)(layer_2)
+		# output_layer = keras.layers.Dropout(0.3)(layer_3)
 		output_layer = keras.layers.Dense(nb_classes, activation='softmax')(output_layer)
 
 		model = keras.models.Model(inputs=input_layer, outputs=output_layer)
@@ -63,7 +65,8 @@ class Classifier_MLP:
 			exit()
 		# x_val and y_val are only used to monitor the test loss and NOT for training  
 		batch_size = 16
-		nb_epochs = 5000
+		# nb_epochs = 5000
+		nb_epochs = 200
 
 		mini_batch_size = int(min(x_train.shape[0]/10, batch_size))
 
@@ -83,9 +86,19 @@ class Classifier_MLP:
 		# convert the predicted from binary to integer 
 		y_pred = np.argmax(y_pred , axis=1)
 
-		save_logs(self.output_directory, hist, y_pred, y_true, duration)
+		# save_logs(self.output_directory, hist, y_pred, y_true, duration)
+
+		from utils.metrics import classify_metrics
+		TP, ALL_HAS, FP, diff = classify_metrics(y_pred, y_true)
+
+		y_true = np.argmax(y_train, axis=1)
+		y_pred = self.predict(x_train, y_true, x_train, y_train, y_val,
+							  return_df_metrics=False)
+		y_pred = np.argmax(y_pred, axis=1)
+		TP_tr, ALL_HAS_tr, FP_tr, diff_tr = classify_metrics(y_pred, y_true)
 
 		keras.backend.clear_session()
+		return TP, ALL_HAS, FP, diff, TP_tr, ALL_HAS_tr, FP_tr, diff_tr
 
 	def predict(self, x_test, y_true,x_train,y_train,y_test,return_df_metrics = True):
 		model_path = self.output_directory + 'best_model.hdf5'

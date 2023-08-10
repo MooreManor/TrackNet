@@ -139,3 +139,101 @@ class TennisDataset(Dataset):
 			imgs = np.concatenate((img, img1, img2), axis=2)
 			return np.array(input), np.array(output), np.array(gt_ht), np.array(imgs)
 		return np.array(input), np.array(output), np.array(gt_ht)
+
+
+import glob
+from utils.utils import calculate_velocity, add_csv_col, jud_dir, add_text_to_video, interpolation
+from utils.feat_utils import get_lag_feature, get_single_lag_feature
+class TSCDataset(Dataset):
+	def __init__(self, train=True, target_name = 'first_hit', var_list = ['x', 'y'], lag_num = 40, test_game = ['game9', 'game10']):
+		csv_file_all = glob.glob('/datasetb/tennis/' + '/**/Label.csv', recursive=True)
+		pre_lag = 9
+		num_frames_from_event = 4
+		aft_lag = lag_num - pre_lag - 1
+		var_num = len(var_list)
+		self.x = np.empty((0, lag_num, var_num))
+		self.y = np.empty((0,))
+
+		# target_name = 'bounce'
+		csv_val = 1 if 'hit' in target_name else 2
+		first = 1 if 'first' in target_name else 0
+		last = 1 if 'last' in target_name else 0
+
+		for csv_path in csv_file_all:
+			data = []
+			seq_X = []
+			is_test_csv=False
+			if any(x in csv_path for x in test_game):
+				is_test_csv = True
+			if train != (not is_test_csv):
+				continue
+
+			# if train == ~is_test_csv:
+			if first:
+				flag = 0
+			with open(csv_path, newline='', encoding='gbk') as csvfile:
+				reader = csv.reader(csvfile)
+				next(reader)  # 跳过第一行
+				for row in reader:
+					bounce = 0
+					if row[2] == '':
+						data.append([None, None, 0])
+					else:
+						x, y = float(row[2]), float(row[3])
+						# if int(row[4])==2:
+						if int(row[4]) == csv_val:
+							if first:
+								if flag == 0:
+									bounce = 1
+									flag = 1
+							else:
+								bounce = 1
+						else:
+							bounce = 0
+						data.append([x, y, bounce])
+			bounce = list(np.array(data)[:, 2])
+			bounce = np.array([int(x) for x in bounce])
+			# SMOOTH
+			bo_indices = np.where(bounce == 1)
+			if len(bo_indices[0]) != 0:
+				for smooth_idx in bo_indices:
+					# sub_smooth_frame_indices = [idx for idx in range(smooth_idx[0] - num_frames_from_event,
+					#                                                  smooth_idx[0] + num_frames_from_event + 1)]
+					sub_smooth_frame_indices = []
+					for idx in range(smooth_idx[0] - num_frames_from_event,
+									 smooth_idx[0] + num_frames_from_event + 1):
+						if 0 <= idx < len(data):
+							sub_smooth_frame_indices.append(idx)
+					bounce[sub_smooth_frame_indices] = 1
+
+			xy = [l[:2] for l in data]
+			xy = interpolation(xy)
+			x = list(np.array(xy)[:, 0])
+			y = list(np.array(xy)[:, 1])
+			v = np.diff(xy, axis=0)
+			v = np.pad(v, ((1, 0), (0, 0)), 'constant', constant_values=0)
+			vx = v[:, 0]
+			vy = v[:, 1]
+			a = np.diff(v, axis=0)
+			a = np.pad(a, ((1, 0), (0, 0)), 'constant', constant_values=0)
+			ax = a[:, 0]
+			ay = a[:, 1]
+			v = pow(pow(v[:, 0], 2) + pow(v[:, 1], 2), 0.5)
+			a = pow(pow(a[:, 0], 2) + pow(a[:, 1], 2), 0.5)
+			# seq_X = get_lag_feature(x, y, v)
+			# tmp = get_single_lag_feature(x)
+			for var in var_list:
+				tmp = get_single_lag_feature(eval(var), pre_lag=pre_lag, aft_lag=aft_lag)
+				seq_X.append(tmp)
+			seq_X = np.concatenate(seq_X, axis=2)
+			# seq_Y = bounce
+			seq_Y = bounce[9:-31]
+
+			self.x = np.concatenate([self.x, seq_X], axis=0)
+			self.y = np.concatenate([self.y, seq_Y], axis=0)
+
+	def __len__(self):
+		return len(self.x)
+
+	def __getitem__(self, index):
+		return self.x[index], self.y[index]

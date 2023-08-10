@@ -8,7 +8,7 @@ import time
 
 import matplotlib
 # from utils.utils import save_test_duration
-from utils.metrics import tennis_loss
+# from utils.metrics import tennis_loss
 
 
 matplotlib.use('agg')
@@ -38,7 +38,6 @@ class Classifier_RESNET:
 
     def build_model(self, input_shape, nb_classes):
         n_feature_maps = 64
-        # n_feature_maps = 32
 
         input_layer = keras.layers.Input(input_shape)
 
@@ -64,47 +63,48 @@ class Classifier_RESNET:
 
         # BLOCK 2
 
-        conv_x = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=8, padding='same')(output_block_1)
-        conv_x = keras.layers.BatchNormalization()(conv_x)
-        conv_x = keras.layers.Activation('relu')(conv_x)
+        # conv_x = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=8, padding='same')(output_block_1)
+        # conv_x = keras.layers.BatchNormalization()(conv_x)
+        # conv_x = keras.layers.Activation('relu')(conv_x)
+        #
+        # conv_y = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=5, padding='same')(conv_x)
+        # conv_y = keras.layers.BatchNormalization()(conv_y)
+        # conv_y = keras.layers.Activation('relu')(conv_y)
+        #
+        # conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same')(conv_y)
+        # conv_z = keras.layers.BatchNormalization()(conv_z)
+        #
+        # # expand channels for the sum
+        # shortcut_y = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=1, padding='same')(output_block_1)
+        # shortcut_y = keras.layers.BatchNormalization()(shortcut_y)
+        #
+        # output_block_2 = keras.layers.add([shortcut_y, conv_z])
+        # output_block_2 = keras.layers.Activation('relu')(output_block_2)
 
-        conv_y = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=5, padding='same')(conv_x)
-        conv_y = keras.layers.BatchNormalization()(conv_y)
-        conv_y = keras.layers.Activation('relu')(conv_y)
-
-        conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same')(conv_y)
-        conv_z = keras.layers.BatchNormalization()(conv_z)
-
-        # expand channels for the sum
-        shortcut_y = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=1, padding='same')(output_block_1)
-        shortcut_y = keras.layers.BatchNormalization()(shortcut_y)
-
-        output_block_2 = keras.layers.add([shortcut_y, conv_z])
-        output_block_2 = keras.layers.Activation('relu')(output_block_2)
-
-        # BLOCK 3
-
-        conv_x = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=8, padding='same')(output_block_2)
-        conv_x = keras.layers.BatchNormalization()(conv_x)
-        conv_x = keras.layers.Activation('relu')(conv_x)
-
-        conv_y = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=5, padding='same')(conv_x)
-        conv_y = keras.layers.BatchNormalization()(conv_y)
-        conv_y = keras.layers.Activation('relu')(conv_y)
-
-        conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same')(conv_y)
-        # conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same', kernel_regularizer=tf.keras.regularizers.l2(l=0.001), bias_regularizer=tf.keras.regularizers.l2(l=0.001))(conv_y)
-        conv_z = keras.layers.BatchNormalization()(conv_z)
-
-        # no need to expand channels because they are equal
-        shortcut_y = keras.layers.BatchNormalization()(output_block_2)
-
-        output_block_3 = keras.layers.add([shortcut_y, conv_z])
-        output_block_3 = keras.layers.Activation('relu')(output_block_3)
+        # # BLOCK 3
+        #
+        # conv_x = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=8, padding='same')(output_block_2)
+        # conv_x = keras.layers.BatchNormalization()(conv_x)
+        # conv_x = keras.layers.Activation('relu')(conv_x)
+        #
+        # conv_y = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=5, padding='same')(conv_x)
+        # conv_y = keras.layers.BatchNormalization()(conv_y)
+        # conv_y = keras.layers.Activation('relu')(conv_y)
+        #
+        # conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same')(conv_y)
+        # # conv_z = keras.layers.Conv1D(filters=n_feature_maps * 2, kernel_size=3, padding='same', kernel_regularizer=tf.keras.regularizers.l2(l=0.001), bias_regularizer=tf.keras.regularizers.l2(l=0.001))(conv_y)
+        # conv_z = keras.layers.BatchNormalization()(conv_z)
+        #
+        # # no need to expand channels because they are equal
+        # shortcut_y = keras.layers.BatchNormalization()(output_block_2)
+        #
+        # output_block_3 = keras.layers.add([shortcut_y, conv_z])
+        # output_block_3 = keras.layers.Activation('relu')(output_block_3)
 
         # FINAL
 
-        gap_layer = keras.layers.GlobalAveragePooling1D()(output_block_3)
+        # gap_layer = keras.layers.GlobalAveragePooling1D()(output_block_3)
+        gap_layer = keras.layers.GlobalAveragePooling1D()(output_block_1)
 
         output_layer = keras.layers.Dense(nb_classes, activation='softmax')(gap_layer)
 
@@ -175,3 +175,85 @@ class Classifier_RESNET:
             test_duration = time.time() - start_time
             # save_test_duration(self.output_directory + 'test_duration.csv', test_duration)
             return y_pred
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+class Classifier_RESNET_pt(nn.Module):
+    def __init__(self, nb_classes, channel_num):
+        super(Classifier_RESNET_pt, self).__init__()
+        n_feature_maps = 64
+
+        # BLOCK 1
+        self.conv1 = nn.Conv1d(channel_num, n_feature_maps, kernel_size=8, padding=4)
+        self.bn1 = nn.BatchNorm1d(n_feature_maps)
+        self.relu = nn.ReLU()
+
+        # conv_x = keras.layers.Conv1D(filters=n_feature_maps, kernel_size=8, padding='same')(input_layer)
+        # conv_x = keras.layers.BatchNormalization()(conv_x)
+        # conv_x = keras.layers.Activation('relu')
+
+        self.conv2 = nn.Conv1d(n_feature_maps, n_feature_maps, kernel_size=5, padding=2)
+        self.bn2 = nn.BatchNorm1d(n_feature_maps)
+        # conv_y = keras.layers.Conv1D(filters=n_feature_maps, kernel_size=5, padding='same')(conv_x)
+        # conv_y = keras.layers.BatchNormalization()(conv_y)
+        # conv_y = keras.layers.Activation('relu')(conv_y)
+
+        self.conv3 = nn.Conv1d(n_feature_maps, n_feature_maps, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm1d(n_feature_maps)
+        # conv_z = keras.layers.Conv1D(filters=n_feature_maps, kernel_size=3, padding='same')(conv_y)
+        # conv_z = keras.layers.BatchNormalization()(conv_z)
+
+        self.conv4 = nn.Conv1d(n_feature_maps, n_feature_maps, kernel_size=1, padding=0)
+        self.bn4 = nn.BatchNorm1d(n_feature_maps)
+        # expand channels for the sum
+        # shortcut_y = keras.layers.Conv1D(filters=n_feature_maps, kernel_size=1, padding='same')(input_layer)
+        # shortcut_y = keras.layers.BatchNormalization()(shortcut_y)
+
+        # output_block_1 = keras.layers.add([shortcut_y, conv_z])
+        # output_block_1 = keras.layers.Activation('relu')(output_block_1)
+
+        # gap_layer = keras.layers.GlobalAveragePooling1D()(output_block_1)
+        # output_layer = keras.layers.Dense(nb_classes, activation='softmax')(gap_layer)
+        self.gap_layer = nn.AdaptiveAvgPool1d(1)
+        self.output_layer = nn.Linear(n_feature_maps, nb_classes)
+
+    def forward(self, x):
+        conv_x = self.conv1(x)
+        conv_x = self.bn1(conv_x)
+        conv_x = self.relu(conv_x)
+
+        conv_y = self.conv2(conv_x)
+        conv_y = self.bn2(conv_y)
+        conv_y = self.relu(conv_y)
+
+        conv_z = self.conv3(conv_y)
+        conv_z = self.bn3(conv_z)
+
+        shortcut_y = self.conv4(conv_z)
+        shortcut_y = self.bn4(shortcut_y)
+
+        output_block_1 = shortcut_y+conv_z
+        output_block_1 = self.relu(output_block_1)
+
+        gap_layer = self.gap_layer(output_block_1)
+        gap_layer = gap_layer.view(gap_layer.size(0), -1)
+
+        output_layer = self.output_layer(gap_layer)
+        output_layer = F.softmax(output_layer, dim=1)
+
+        return output_layer
+
+if __name__ == '__main__':
+    inp = torch.randn(2, 2, 40)
+    net = Classifier_RESNET_pt(2, 2)
+    res = net(inp)
+
+
+
+
+
+
+
+
+

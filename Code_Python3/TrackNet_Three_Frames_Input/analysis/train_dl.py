@@ -21,14 +21,19 @@ import glob
 y_train = np.empty((0,))
 y_test = np.empty((0,))
 
-target_name = 'hit'
-# target_name = 'first_hit'
+# target_name = 'hit'
+target_name = 'first_hit'
 # classifier_name = 'fcn'
 # classifier_name = 'inception'
 classifier_name = 'resnet'
+# classifier_name = 'mlp'
 
-lag_num = 20
-var_list = ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'v', 'a']
+num_frames_from_event=4
+lag_num = 40
+pre_lag=9
+aft_lag=lag_num-pre_lag-1
+# var_list = ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'v', 'a']
+var_list = ['x', 'y']
 # var_list = ['x', 'y', 'v', 'a']
 # var_list = ['x', 'y', 'vx', 'vy', 'ax', 'ay']
 var_num = len(var_list)
@@ -72,8 +77,21 @@ for csv_path in csv_file_all:
                     bounce = 0
                 data.append([x, y, bounce])
 
+
     bounce = list(np.array(data)[:, 2])
     bounce = np.array([int(x) for x in bounce])
+    # SMOOTH
+    bo_indices = np.where(bounce==1)
+    if len(bo_indices[0])!=0:
+        for smooth_idx in bo_indices:
+            # sub_smooth_frame_indices = [idx for idx in range(smooth_idx[0] - num_frames_from_event,
+            #                                                  smooth_idx[0] + num_frames_from_event + 1)]
+            sub_smooth_frame_indices = []
+            for idx in range(smooth_idx[0] - num_frames_from_event, smooth_idx[0] + num_frames_from_event + 1):
+                 if 0<=idx<len(data):
+                     sub_smooth_frame_indices.append(idx)
+            bounce[sub_smooth_frame_indices] = 1
+
     xy = [l[:2] for l in data]
     xy = interpolation(xy)
     x = list(np.array(xy)[:, 0])
@@ -91,19 +109,28 @@ for csv_path in csv_file_all:
     # seq_X = get_lag_feature(x, y, v)
     # tmp = get_single_lag_feature(x)
     for var in var_list:
-        tmp = get_single_lag_feature(eval(var), lag=lag_num)
+        tmp = get_single_lag_feature(eval(var), pre_lag=pre_lag, aft_lag=aft_lag)
         seq_X.append(tmp)
     seq_X = np.concatenate(seq_X, axis=2)
-    seq_Y = bounce
+    # seq_Y = bounce
+    seq_Y = bounce[9:-31]
+    # seq_Y = bounce
     if test==1:
         x_test = np.concatenate([x_test, seq_X], axis=0)
         y_test = np.concatenate([y_test, seq_Y], axis=0)
     else:
         x_train = np.concatenate([x_train, seq_X], axis=0)
         y_train = np.concatenate([y_train, seq_Y], axis=0)
-
-noise = np.random.uniform(low=-1.0, high=1.0, size=(y_train.shape[0], 20, 8))
-x_train = x_train + noise
+# if np.random.uniform() <= 0.5:
+#     lower_bound = -5
+#     upper_bound = 5
+#     mean = (lower_bound + upper_bound) / 2
+#     std = (upper_bound - lower_bound) / 6
+#     noise = np.random.normal(mean, std, size=(y_train.shape[0], lag_num, var_num))
+#     # noise = np.random.uniform(low=-1.0, high=1.0, size=(y_train.shape[0], lag_num, var_num))*5
+#     x_train = x_train + noise
+# if np.random.uniform() <= 0.5:
+#     x_train[:, :, 0] = 1280-x_train[:, :, 0]
 
 def fit_classifier():
     # x_train = datasets_dict[dataset_name][0]
@@ -185,3 +212,9 @@ if __name__ == '__main__':
     output_directory = root_dir + '/results/' + classifier_name + '/' + target_name
     os.makedirs(output_directory, exist_ok=True)
     fit_classifier()
+    # input_shape = x_train.shape[1:]
+    # nb_classes = len(np.unique(np.concatenate((y_train, y_test), axis=0)))
+    # if classifier_name == 'resnet':
+    #     from classifiers import resnet
+    #     net = resnet.Classifier_RESNET(output_directory, input_shape, nb_classes, True)
+    # res = net.predict(x_test, None, None, None, None, False)
