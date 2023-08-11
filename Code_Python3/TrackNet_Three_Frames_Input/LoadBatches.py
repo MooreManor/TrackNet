@@ -149,7 +149,7 @@ class TennisDataset(Dataset):
 		return np.array(input), np.array(output), np.array(gt_ht)
 		# return np.array(input), np.array(output), np.array(gt_ht), str(path)
 
-
+import glob
 class VideoDataset(Dataset):
 	def __init__(self, video_path,  n_classes , input_height , input_width , output_height , output_width, train=True, num_images=0, rt_ori=False):
 		self.images_path = video_path
@@ -162,7 +162,10 @@ class VideoDataset(Dataset):
 		self.resize = train
 		self.rt_ori = rt_ori
 		# read csv file to 'zipped'
-		self.data = self.get_video_frames(video_path)
+		# self.data = self.get_video_frames(video_path)
+		video_name = os.path.basename(video_path)[:-4]
+		self.data = glob.glob(f'tmp/{video_name}/imgs/*.png')
+		self.data = sorted(self.data)
 
 		if num_images > 0:
 			# select a random subset of the dataset
@@ -174,9 +177,9 @@ class VideoDataset(Dataset):
 	def __getitem__(self, index):
 		if index<2:
 			return 1
-		img = self.data[index]
-		img1 = self.data[index - 1]
-		img2 = self.data[index - 2]
+		img = cv2.imread(self.data[index], 1)
+		img1 = cv2.imread(self.data[index-1], 1)
+		img2 = cv2.imread(self.data[index-2], 1)
 		if self.rt_ori:
 			imgs_ori = np.concatenate((img, img1, img2), axis=2)
 		img = cv2.resize(img, (self.input_width, self.input_height))

@@ -16,6 +16,7 @@ from utils.utils import video_to_images, save_PIL_image, gen_tennis_loc_csv, sav
 # --save_weights_path=weights/model.0 --input_video_path="VideoInput/168000453563685.mp4" --n_classes=256
 # --save_weights_path=weights/model.0 --input_video_path="output3.mp4" --output_video_path="output3_TrackNet.mp4" --n_classes=256
 # --save_weights_path=weights/model.0 --input_video_path="tmp.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
+# --save_weights_path=weights/model.0 --input_video_path="VideoInput/1689861601046.mp4" --output_video_path="tmp_TrackNet.mp4" --n_classes=256
 
 #parse parameters
 parser = argparse.ArgumentParser()
@@ -66,7 +67,8 @@ for i in range(0,8):
 
 #save prediction images as vidoe
 #Tutorial: https://stackoverflow.com/questions/33631489/error-during-saving-a-video-using-python-and-opencv
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
+# fourcc = cv2.VideoWriter_fourcc(*'XVID')
+fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 output_video = cv2.VideoWriter(dst_folder+f'/{output_video_path}',fourcc, fps, (output_width,output_height))
 
 input_height=360
@@ -79,8 +81,8 @@ if not os.path.exists(dst_folder+'/imgs'):
 eval_dt = VideoDataset(video_path=input_video_path, n_classes=n_classes, input_height=360, input_width=640,
                           # output_height=input_height, output_width=input_width, num_images=64)
                           output_height=360, output_width=640, train=False, rt_ori=True)
-data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=8)
-# data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=0)
+# data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=8)
+data_loader = DataLoader(eval_dt, batch_size=2, shuffle=False, num_workers=0)
 
 from tqdm import tqdm
 pbar = tqdm(data_loader,
@@ -121,7 +123,7 @@ for step, batch in enumerate(pbar):
 	# pred_has_circle = [np.max(img) > 50 for img in heatmap]
 	for j, pred_has in enumerate(pred_has_circle):
 		output_img = ori_img[j]
-		save_np_image(img=heatmap, img_folder=dst_folder + '/htm', img_name="{:06d}.png".format(currentFrame))
+		# save_np_image(img=heatmap, img_folder=dst_folder + '/htm', img_name="{:06d}.png".format(currentFrame))
 		PIL_image = cv2.cvtColor(output_img, cv2.COLOR_BGR2RGB)
 		PIL_image = Image.fromarray(PIL_image)
 		if pred_has==True:
@@ -138,7 +140,7 @@ for step, batch in enumerate(pbar):
 		output_video.write(opencvImage)
 		currentFrame += 1
 
-gen_tennis_loc_csv(dst_folder, tennis_loc_arr)
+	gen_tennis_loc_csv(dst_folder, tennis_loc_arr)
 
 output_video.release()
 print("finish")

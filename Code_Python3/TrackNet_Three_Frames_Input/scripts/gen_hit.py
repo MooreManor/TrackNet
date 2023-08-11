@@ -42,9 +42,12 @@ def interpolation(coords):
 
   return newCoords
 
+
 # vids = glob.glob('VideoInput/*.mp4')
 # vids = ['dataset4.mp4']
-vids = ['168113862372680.mp4']
+vids = ['1689861601046.mp4']
+from classfiers.resnet import Classifier_RESNET_pt
+net = Classifier_RESNET_pt(2, 8).to('cuda')
 
 for vid in vids:
     dir = vid.split('/')[-1][:-4]
