@@ -151,8 +151,10 @@ class TSCDataset(Dataset):
 		num_frames_from_event = 4
 		aft_lag = lag_num - pre_lag - 1
 		var_num = len(var_list)
+		self.var_num = var_num
 		self.x = np.empty((0, lag_num, var_num))
 		self.y = np.empty((0,))
+		self.match = []
 
 		# target_name = 'bounce'
 		csv_val = 1 if 'hit' in target_name else 2
@@ -191,6 +193,7 @@ class TSCDataset(Dataset):
 						else:
 							bounce = 0
 						data.append([x, y, bounce])
+						self.match.append(csv_path)
 			bounce = list(np.array(data)[:, 2])
 			bounce = np.array([int(x) for x in bounce])
 			# SMOOTH
@@ -232,8 +235,23 @@ class TSCDataset(Dataset):
 			self.x = np.concatenate([self.x, seq_X], axis=0)
 			self.y = np.concatenate([self.y, seq_Y], axis=0)
 
+		# self.x_pos =
+		# self.x_neg =
+
 	def __len__(self):
 		return len(self.x)
 
 	def __getitem__(self, index):
-		return self.x[index], self.y[index]
+		input = self.x[index]
+		label = self.y[index]
+		if np.random.uniform() <= 0.5:
+		    lower_bound = -5
+		    upper_bound = 5
+		    mean = (lower_bound + upper_bound) / 2
+		    std = (upper_bound - lower_bound) / 6
+		    noise = np.random.normal(mean, std, size=(40, self.var_num))
+		    # noise = np.random.uniform(low=-1.0, high=1.0, size=(y_train.shape[0], lag_num, var_num))*5
+		    input = input + noise
+		if np.random.uniform() <= 0.5:
+		    input[:, 0] = 1280-input[:, 0]
+		return input, label
