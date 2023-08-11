@@ -146,6 +146,7 @@ from utils.utils import calculate_velocity, add_csv_col, jud_dir, add_text_to_vi
 from utils.feat_utils import get_lag_feature, get_single_lag_feature
 class TSCDataset(Dataset):
 	def __init__(self, train=True, target_name = 'first_hit', var_list = ['x', 'y'], lag_num = 40, test_game = ['game9', 'game10']):
+		self.train=train
 		csv_file_all = glob.glob('/datasetb/tennis/' + '/**/Label.csv', recursive=True)
 		pre_lag = 9
 		num_frames_from_event = 4
@@ -244,14 +245,110 @@ class TSCDataset(Dataset):
 	def __getitem__(self, index):
 		input = self.x[index]
 		label = self.y[index]
-		if np.random.uniform() <= 0.5:
-		    lower_bound = -5
-		    upper_bound = 5
-		    mean = (lower_bound + upper_bound) / 2
-		    std = (upper_bound - lower_bound) / 6
-		    noise = np.random.normal(mean, std, size=(40, self.var_num))
-		    # noise = np.random.uniform(low=-1.0, high=1.0, size=(y_train.shape[0], lag_num, var_num))*5
-		    input = input + noise
-		if np.random.uniform() <= 0.5:
-		    input[:, 0] = 1280-input[:, 0]
+		if self.train:
+			if np.random.uniform() <= 0.5:
+				lower_bound = -5
+				upper_bound = 5
+				mean = (lower_bound + upper_bound) / 2
+				std = (upper_bound - lower_bound) / 6
+				noise = np.random.normal(mean, std, size=(40, self.var_num))
+				# noise = np.random.uniform(low=-1.0, high=1.0, size=(y_train.shape[0], lag_num, var_num))*5
+				input = input + noise
+			if np.random.uniform() <= 0.5:
+				input[:, 0] = 1280-input[:, 0]
+		return input, label
+
+class VideoTSCDataset(Dataset):
+	def __init__(self, csv_path,  target_name = 'first_hit', var_list = ['x', 'y'], lag_num = 40):
+		pre_lag = 9
+		num_frames_from_event = 4
+		aft_lag = lag_num - pre_lag - 1
+		var_num = len(var_list)
+		self.var_num = var_num
+		self.x = np.empty((0, lag_num, var_num))
+		self.y = np.empty((0,))
+		self.match = []
+
+		# target_name = 'bounce'
+		csv_val = 1 if 'hit' in target_name else 2
+		first = 1 if 'first' in target_name else 0
+		last = 1 if 'last' in target_name else 0
+
+		data = []
+		seq_X = []
+
+		# if train == ~is_test_csv:
+		if first:
+			flag = 0
+		with open(csv_path, newline='', encoding='gbk') as csvfile:
+			reader = csv.reader(csvfile)
+			next(reader)  # 跳过第一行
+			for row in reader:
+				bounce = 0
+				if len(row)==1 or row[2] == '':
+					data.append([None, None, 0])
+				else:
+					x, y = float(row[2]), float(row[3])
+					# if int(row[4])==2:
+					if int(row[4]) == csv_val:
+						if first:
+							if flag == 0:
+								bounce = 1
+								flag = 1
+						else:
+							bounce = 1
+					else:
+						bounce = 0
+					data.append([x, y, bounce])
+					self.match.append(csv_path)
+		bounce = list(np.array(data)[:, 2])
+		bounce = np.array([int(x) for x in bounce])
+		# SMOOTH
+		bo_indices = np.where(bounce == 1)
+		if len(bo_indices[0]) != 0:
+			for smooth_idx in bo_indices:
+				# sub_smooth_frame_indices = [idx for idx in range(smooth_idx[0] - num_frames_from_event,
+				#                                                  smooth_idx[0] + num_frames_from_event + 1)]
+				sub_smooth_frame_indices = []
+				for idx in range(smooth_idx[0] - num_frames_from_event,
+								 smooth_idx[0] + num_frames_from_event + 1):
+					if 0 <= idx < len(data):
+						sub_smooth_frame_indices.append(idx)
+				bounce[sub_smooth_frame_indices] = 1
+
+		xy = [l[:2] for l in data]
+		xy = interpolation(xy)
+		x = list(np.array(xy)[:, 0])
+		y = list(np.array(xy)[:, 1])
+		v = np.diff(xy, axis=0)
+		v = np.pad(v, ((1, 0), (0, 0)), 'constant', constant_values=0)
+		vx = v[:, 0]
+		vy = v[:, 1]
+		a = np.diff(v, axis=0)
+		a = np.pad(a, ((1, 0), (0, 0)), 'constant', constant_values=0)
+		ax = a[:, 0]
+		ay = a[:, 1]
+		v = pow(pow(v[:, 0], 2) + pow(v[:, 1], 2), 0.5)
+		a = pow(pow(a[:, 0], 2) + pow(a[:, 1], 2), 0.5)
+		# seq_X = get_lag_feature(x, y, v)
+		# tmp = get_single_lag_feature(x)
+		for var in var_list:
+			tmp = get_single_lag_feature(eval(var), pre_lag=pre_lag, aft_lag=aft_lag)
+			seq_X.append(tmp)
+		seq_X = np.concatenate(seq_X, axis=2)
+		# seq_Y = bounce
+		seq_Y = bounce[9:-31]
+
+		self.x = np.concatenate([self.x, seq_X], axis=0)
+		self.y = np.concatenate([self.y, seq_Y], axis=0)
+
+		# self.x_pos =
+		# self.x_neg =
+
+	def __len__(self):
+		return len(self.x)
+
+	def __getitem__(self, index):
+		input = self.x[index]
+		label = self.y[index]
 		return input, label

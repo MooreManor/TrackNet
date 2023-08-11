@@ -19,8 +19,8 @@ var_list = ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'v', 'a']
 # var_list = ['x', 'y']
 
 var_num = len(var_list)
-train_tennis_dt = TSCDataset(var_list=var_list)
-test_tennis_dt = TSCDataset(train=False, var_list=var_list)
+train_tennis_dt = TSCDataset(var_list=var_list, target_name=target_name)
+test_tennis_dt = TSCDataset(train=False, var_list=var_list, target_name=target_name)
 epoch_num = 200
 device = 'cuda'
 save_weights_path = 'weights/model'
